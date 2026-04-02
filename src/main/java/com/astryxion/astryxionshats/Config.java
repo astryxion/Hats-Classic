@@ -1,90 +1,94 @@
 package com.astryxion.astryxionshats;
 
 import com.astryxion.astryxionshats.common.hat.HatMode;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
- * Clean config for Astryxion's Hats
+ * Clean config for Astryxion's Hats (Fabric – file-based)
  */
-@Mod.EventBusSubscriber(
-        modid = AstryxionsHats.MODID,
-        bus = Mod.EventBusSubscriber.Bus.MOD
-)
 public class Config {
 
-    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-
-    /* =========================
-       General Settings
-       ========================= */
-
-    public static final ForgeConfigSpec.BooleanValue ENABLE_HATS = BUILDER
-            .comment("Enable or disable hats entirely")
-            .define("enableHats", true);
-
-    public static final ForgeConfigSpec.BooleanValue ENABLE_MOBS = BUILDER
-            .comment("Allow mobs to wear hats")
-            .define("enableMobHats", true);
-
-    public static final ForgeConfigSpec.BooleanValue ENABLE_PLAYERS = BUILDER
-            .comment("Allow players to wear hats")
-            .define("enablePlayerHats", true);
-
-    public static final ForgeConfigSpec.DoubleValue MOB_HAT_SPAWN_CHANCE = BUILDER
-            .comment(
-                    "Chance for mobs to spawn wearing hats",
-                    "0.0 = never",
-                    "1.0 = always"
-            )
-            .defineInRange("mobHatSpawnChance", 0.6D, 0.0D, 1.0D);
-
-    public static final ForgeConfigSpec.EnumValue<HatMode> HAT_MODE = BUILDER
-            .comment(
-                    "Hat gameplay mode",
-                    "COSMETIC = all hats unlocked",
-                    "HUNTING = hats must be unlocked by killing mobs"
-            )
-            // 🔧 DEFAULT SET TO HUNTING
-            .defineEnum("hatMode", HatMode.HUNTING);
-
-    /* =========================
-       Build Spec
-       ========================= */
-
-    public static final ForgeConfigSpec SPEC = BUILDER.build();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     /* =========================
        Cached values
        ========================= */
 
-    public static boolean enableHats;
-    public static boolean enableMobHats;
-    public static boolean enablePlayerHats;
-    public static double mobHatSpawnChance;
-    public static HatMode hatMode;
+    public static boolean enableHats = true;
+    public static boolean enableMobHats = true;
+    public static boolean enablePlayerHats = true;
+    public static double mobHatSpawnChance = 0.6D;
+    public static HatMode hatMode = HatMode.HUNTING;
 
-    @SubscribeEvent
-    public static void onLoad(final ModConfigEvent.Loading event) {
-        updateConfig(event);
+    /* =========================
+       File path
+       ========================= */
+
+    private static Path getConfigPath() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance()
+                .getConfigDir()
+                .resolve("astryxionshats.json");
     }
 
-    @SubscribeEvent
-    public static void onReload(final ModConfigEvent.Reloading event) {
-        updateConfig(event);
-    }
+    /* =========================
+       Load / Save
+       ========================= */
 
-    private static void updateConfig(final ModConfigEvent event) {
-        if (event.getConfig().getSpec() != SPEC)
+    public static void load() {
+        Path path = getConfigPath();
+        if (!Files.exists(path)) {
+            writeDefaults(path);
             return;
+        }
+        try {
+            String content = Files.readString(path);
+            JsonObject root = GSON.fromJson(content, JsonObject.class);
+            if (root == null) return;
+            enableHats = root.has("enableHats") ? root.get("enableHats").getAsBoolean() : true;
+            enableMobHats = root.has("enableMobHats") ? root.get("enableMobHats").getAsBoolean() : true;
+            enablePlayerHats = root.has("enablePlayerHats") ? root.get("enablePlayerHats").getAsBoolean() : true;
+            mobHatSpawnChance = root.has("mobHatSpawnChance") ? root.get("mobHatSpawnChance").getAsDouble() : 0.6D;
+            mobHatSpawnChance = Math.max(0.0D, Math.min(1.0D, mobHatSpawnChance));
+            if (root.has("hatMode")) {
+                try {
+                    hatMode = HatMode.valueOf(root.get("hatMode").getAsString().toUpperCase());
+                } catch (Exception e) {
+                    hatMode = HatMode.HUNTING;
+                }
+            } else {
+                hatMode = HatMode.HUNTING;
+            }
+        } catch (Exception e) {
+            AstryxionsHats.LOGGER.error("Failed to load config, using defaults", e);
+        }
+    }
 
-        enableHats = ENABLE_HATS.get();
-        enableMobHats = ENABLE_MOBS.get();
-        enablePlayerHats = ENABLE_PLAYERS.get();
-        mobHatSpawnChance = MOB_HAT_SPAWN_CHANCE.get();
-        hatMode = HAT_MODE.get();
+    public static void save() {
+        writeDefaults(getConfigPath());
+    }
+
+    private static void writeDefaults(Path path) {
+        JsonObject root = new JsonObject();
+        root.addProperty("enableHats", enableHats);
+        root.addProperty("enableMobHats", enableMobHats);
+        root.addProperty("enablePlayerHats", enablePlayerHats);
+        root.addProperty("mobHatSpawnChance", mobHatSpawnChance);
+        root.addProperty("hatMode", hatMode.name());
+        try {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, GSON.toJson(root));
+        } catch (IOException e) {
+            AstryxionsHats.LOGGER.error("Failed to write config", e);
+        }
+    }
+
+    public static void reload() {
+        load();
     }
 }

@@ -1,11 +1,11 @@
 package com.astryxion.astryxionshats.common.registry;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
+import com.astryxion.astryxionshats.common.hat.HatItem;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -13,21 +13,11 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Core hat item registry
- *
- * - Auto registers all hats from models folder
- * - No creative tab logic
- * - Clean permanent system
+ * Core hat item registry (Fabric)
+ * Auto registers all hats from models folder
  */
 public final class HatItemRegistry {
 
-    public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(ForgeRegistries.ITEMS, AstryxionsHats.MODID);
-
-    /** All registered hats (registry objects) */
-    public static final List<RegistryObject<Item>> ALL_HATS = new ArrayList<>();
-
-    /** Names to skip (dev junk / parents / icons) */
     private static final Set<String> BLACKLIST = Set.of(
             "hatparent",
             "hatparent2",
@@ -35,40 +25,24 @@ public final class HatItemRegistry {
             "haticon"
     );
 
-    private HatItemRegistry() {}
-
-    // =============================
-    // Public register entry
-    // =============================
-
-    public static void register(IEventBus bus) {
-        autoRegisterHats();
-        ITEMS.register(bus);
-    }
-
-    // =============================
-    // Expose real Item list (FOR SPAWNING, RANDOMIZER, ETC)
-    // =============================
+    private static final List<Item> ALL_HATS_LIST = new ArrayList<>();
 
     public static List<Item> getAllHats() {
-
-        List<Item> hats = new ArrayList<>();
-
-        for (RegistryObject<Item> reg : ALL_HATS) {
-            hats.add(reg.get());
-        }
-
-        return hats;
+        return new ArrayList<>(ALL_HATS_LIST);
     }
 
-    // =============================
-    // Auto scan model files
-    // =============================
+    public static List<Item> getRawAllHatsList() {
+        return ALL_HATS_LIST;
+    }
+
+    private HatItemRegistry() {}
+
+    public static void register() {
+        autoRegisterHats();
+    }
 
     private static void autoRegisterHats() {
-
         try {
-
             Path modelsPath = getResourcePath(
                     "assets/" + AstryxionsHats.MODID + "/models/item"
             );
@@ -81,33 +55,24 @@ public final class HatItemRegistry {
             Files.list(modelsPath)
                     .filter(p -> p.toString().endsWith(".json"))
                     .forEach(path -> {
-
                         String name = path.getFileName()
                                 .toString()
                                 .replace(".json", "");
 
-                        if (BLACKLIST.contains(name)) {
-                            return;
-                        }
+                        if (BLACKLIST.contains(name)) return;
 
-                        RegistryObject<Item> item = ITEMS.register(
-                                name,
-                                () -> new Item(new Item.Properties())
-                        );
-
-                        ALL_HATS.add(item);
+                        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, name);
+                        HatItem item = new HatItem(name);
+                        Registry.register(BuiltInRegistries.ITEM, id, item);
+                        ALL_HATS_LIST.add(item);
                     });
 
-            AstryxionsHats.LOGGER.info("Auto-registered {} hats", ALL_HATS.size());
+            AstryxionsHats.LOGGER.info("Auto-registered {} hats", ALL_HATS_LIST.size());
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to auto register hats", e);
         }
     }
-
-    // =============================
-    // Resource folder access
-    // =============================
 
     private static Path getResourcePath(String path)
             throws IOException, URISyntaxException {
@@ -119,14 +84,11 @@ public final class HatItemRegistry {
         if (url == null) return null;
 
         if (url.getProtocol().equals("jar")) {
-
             FileSystem fs = FileSystems.newFileSystem(
                     url.toURI(),
                     Collections.emptyMap()
             );
-
             return fs.getPath(path);
-
         } else {
             return Paths.get(url.toURI());
         }

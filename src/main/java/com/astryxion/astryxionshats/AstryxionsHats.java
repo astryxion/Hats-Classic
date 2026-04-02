@@ -1,74 +1,66 @@
 package com.astryxion.astryxionshats;
 
+import com.astryxion.astryxionshats.common.capability.HatCloneHandler;
+import com.astryxion.astryxionshats.common.capability.HatLoginHandler;
+import com.astryxion.astryxionshats.common.events.HatWelcomeHandler;
+import com.astryxion.astryxionshats.common.hat.HatPartEvents;
+import com.astryxion.astryxionshats.common.hat.HatRarityLoader;
+import com.astryxion.astryxionshats.common.hat.HatUnlockHandler;
 import com.astryxion.astryxionshats.common.network.HatPacketHandler;
 import com.astryxion.astryxionshats.common.registry.HatItemRegistry;
-
 import com.mojang.logging.LogUtils;
-
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import org.slf4j.Logger;
 
 /**
  * Main mod class for Astryxion's Hats
- * Forge 1.20.1 clean entry
+ * Fabric 1.20.1 entry
  */
-@Mod(AstryxionsHats.MODID)
-public class AstryxionsHats {
+public class AstryxionsHats implements ModInitializer {
 
     public static final String MODID = "astryxionshats";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public AstryxionsHats() {
+    @Override
+    public void onInitialize() {
+        Config.load();
 
-        IEventBus modEventBus =
-                FMLJavaModLoadingContext.get().getModEventBus();
+        HatItemRegistry.register();
 
-        // =========================
-        // CONFIG (THIS FIXES SPAWNING)
-        // =========================
+        HatRarityLoader.load();
+        HatPacketHandler.register();
 
-        ModLoadingContext.get().registerConfig(
-                ModConfig.Type.COMMON,
-                Config.SPEC
-        );
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            var player = handler.getPlayer();
+            HatPartEvents.onPlayerJoinLevel(player);
+            HatLoginHandler.onPlayerLogin(player);
+            HatWelcomeHandler.onPlayerJoin(player);
+        });
 
-        // =========================
-        // Registries
-        // =========================
+        ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
+            HatUnlockHandler.onMobKilled(entity, damageSource);
+        });
 
-        HatItemRegistry.register(modEventBus);
+        ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
+            HatCloneHandler.onPlayerClone(oldPlayer, newPlayer, alive);
+        });
 
-        // =========================
-        // Lifecycle
-        // =========================
+        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+            HatCloneHandler.onPlayerRespawn(newPlayer);
+        });
 
-        modEventBus.addListener(this::commonSetup);
+        ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> {
+            HatCloneHandler.onDimensionChange(player);
+        });
 
-        MinecraftForge.EVENT_BUS.register(this);
-
-        LOGGER.info("Astryxion's Hats initializing...");
-    }
-
-    private void commonSetup(final FMLCommonSetupEvent event) {
-
-        // IMPORTANT: register packets after everything loads
-        event.enqueueWork(HatPacketHandler::register);
+        ServerLifecycleEvents.SERVER_STARTING.register(server ->
+                LOGGER.info("Astryxion's Hats server starting."));
 
         LOGGER.info("Astryxion's Hats common setup complete.");
-    }
-
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
-
-        LOGGER.info("Astryxion's Hats server starting.");
     }
 }
