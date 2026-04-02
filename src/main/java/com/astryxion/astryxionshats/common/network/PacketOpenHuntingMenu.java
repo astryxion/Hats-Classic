@@ -1,7 +1,7 @@
 package com.astryxion.astryxionshats.common.network;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
-import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -15,13 +15,13 @@ public class PacketOpenHuntingMenu {
 
     public static void handle(PacketOpenHuntingMenu msg, ServerPlayer player) {
         if (player != null && !player.isCreative()) {
-            AdvancementHolder holder = player.getServer().getAdvancements()
-                    .get(ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, "hats/hunt_begin"));
-            if (holder != null) {
-                AdvancementProgress progress = player.getAdvancements().getOrStartProgress(holder);
+            Advancement advancement = player.getServer().getAdvancements()
+                    .getAdvancement(new ResourceLocation(AstryxionsHats.MODID, "hats/hunt_begin"));
+            if (advancement != null) {
+                AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
                 if (!progress.isDone()) {
                     for (String criterion : progress.getRemainingCriteria()) {
-                        player.getAdvancements().award(holder, criterion);
+                        player.getAdvancements().award(advancement, criterion);
                     }
                 }
             }

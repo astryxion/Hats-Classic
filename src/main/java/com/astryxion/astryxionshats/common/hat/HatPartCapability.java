@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * HatPart storage for LivingEntity (NeoForge – in-memory map)
+ * HatPart storage for LivingEntity (Fabric – replaces Forge capability)
  */
 public class HatPartCapability {
 

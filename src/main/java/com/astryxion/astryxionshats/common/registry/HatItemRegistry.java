@@ -2,12 +2,10 @@ package com.astryxion.astryxionshats.common.registry;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
 import com.astryxion.astryxionshats.common.hat.HatItem;
+import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.DeferredItem;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -15,7 +13,7 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Core hat item registry (NeoForge)
+ * Core hat item registry (Fabric)
  * Auto registers all hats from models folder
  */
 public final class HatItemRegistry {
@@ -27,30 +25,20 @@ public final class HatItemRegistry {
             "haticon"
     );
 
-    private static final List<DeferredItem<Item>> ALL_HATS_REGISTRY = new ArrayList<>();
     private static final List<Item> ALL_HATS_LIST = new ArrayList<>();
 
     public static List<Item> getAllHats() {
-        if (ALL_HATS_LIST.isEmpty() && !ALL_HATS_REGISTRY.isEmpty()) {
-            for (DeferredItem<Item> ro : ALL_HATS_REGISTRY) {
-                ALL_HATS_LIST.add(ro.get());
-            }
-        }
         return new ArrayList<>(ALL_HATS_LIST);
     }
 
     public static List<Item> getRawAllHatsList() {
-        getAllHats();
         return ALL_HATS_LIST;
     }
 
-    private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AstryxionsHats.MODID);
-
     private HatItemRegistry() {}
 
-    public static void register(IEventBus modEventBus) {
+    public static void register() {
         autoRegisterHats();
-        ITEMS.register(modEventBus);
     }
 
     private static void autoRegisterHats() {
@@ -73,11 +61,13 @@ public final class HatItemRegistry {
 
                         if (BLACKLIST.contains(name)) return;
 
-                        DeferredItem<Item> reg = ITEMS.register(name, () -> new HatItem(name));
-                        ALL_HATS_REGISTRY.add(reg);
+                        ResourceLocation id = new ResourceLocation(AstryxionsHats.MODID, name);
+                        HatItem item = new HatItem(name);
+                        Registry.register(BuiltInRegistries.ITEM, id, item);
+                        ALL_HATS_LIST.add(item);
                     });
 
-            AstryxionsHats.LOGGER.info("Auto-registered {} hats", ALL_HATS_REGISTRY.size());
+            AstryxionsHats.LOGGER.info("Auto-registered {} hats", ALL_HATS_LIST.size());
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to auto register hats", e);

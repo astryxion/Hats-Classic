@@ -3,12 +3,10 @@ package com.astryxion.astryxionshats.common.capability;
 import com.astryxion.astryxionshats.AstryxionsHats;
 import com.astryxion.astryxionshats.common.hat.PlayerHatData;
 import com.astryxion.astryxionshats.common.hat.PlayerHatDataImpl;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
@@ -18,7 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Player hat data storage (NeoForge – SavedData + client cache)
+ * Player hat data storage (Fabric – replaces Forge capability)
  */
 public class HatDataCapability {
 
@@ -57,15 +55,13 @@ public class HatDataCapability {
         getSavedData(overworld).setDirty();
     }
 
-    private static final SavedData.Factory<PlayerHatDataSavedData> FACTORY = new SavedData.Factory<>(
-            PlayerHatDataSavedData::create,
-            (tag, provider) -> tag.isEmpty() ? PlayerHatDataSavedData.create() : PlayerHatDataSavedData.load(tag),
-            null
-    );
-
     static PlayerHatDataSavedData getSavedData(ServerLevel level) {
         DimensionDataStorage storage = level.getDataStorage();
-        return storage.computeIfAbsent(FACTORY, SAVED_DATA_ID);
+        return storage.computeIfAbsent(
+                PlayerHatDataSavedData::load,
+                PlayerHatDataSavedData::create,
+                SAVED_DATA_ID
+        );
     }
 
     public static final class PlayerHatDataSavedData extends SavedData {
@@ -90,7 +86,7 @@ public class HatDataCapability {
         }
 
         @Override
-        public CompoundTag save(CompoundTag nbt, HolderLookup.Provider provider) {
+        public CompoundTag save(CompoundTag nbt) {
             CompoundTag players = new CompoundTag();
             for (Map.Entry<UUID, PlayerHatDataImpl> e : playerData.entrySet()) {
                 players.put(e.getKey().toString(), e.getValue().serializeNBT());

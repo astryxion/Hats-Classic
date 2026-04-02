@@ -4,7 +4,7 @@ import com.astryxion.astryxionshats.AstryxionsHats;
 import com.astryxion.astryxionshats.common.capability.HatDataCapability;
 import com.astryxion.astryxionshats.common.network.HatPacketHandler;
 
-import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -64,10 +64,10 @@ public class HatUnlockHandler {
                 }
 
                 if (advancementPath != null) {
-                    AdvancementHolder holder = player.getServer().getAdvancements()
-                            .get(ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, advancementPath));
-                    if (holder != null) {
-                        player.getAdvancements().award(holder, "unlock_via_code");
+                    Advancement adv = player.getServer().getAdvancements()
+                            .getAdvancement(new ResourceLocation(AstryxionsHats.MODID, advancementPath));
+                    if (adv != null) {
+                        player.getAdvancements().award(adv, "unlock_via_code");
                     }
                 }
 

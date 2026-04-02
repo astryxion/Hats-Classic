@@ -2,23 +2,16 @@ package com.astryxion.astryxionshats.common.network;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
 import io.netty.buffer.Unpooled;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class HatPacketHandler {
 
     public static final ResourceLocation CHANNEL_ID =
-            ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, "main");
-    private static final ResourceLocation CHANNEL_ID_C2S = ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, "main_c2s");
-    private static final ResourceLocation CHANNEL_ID_S2C = ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, "main_s2c");
+            new ResourceLocation(AstryxionsHats.MODID, "main");
 
     private static final byte ID_EQUIP = 0;
     private static final byte ID_OPEN_COSMETIC = 1;
@@ -27,50 +20,24 @@ public class HatPacketHandler {
     private static final byte ID_HAT_UNLOCKED = 4;
     private static final byte ID_SYNC_HAT_PART = 5;
 
-    public record HatsC2SPayload(byte typeId, byte[] payload) implements CustomPacketPayload {
-        public static final CustomPacketPayload.Type<HatsC2SPayload> TYPE = new CustomPacketPayload.Type<>(CHANNEL_ID_C2S);
-        public static final StreamCodec<FriendlyByteBuf, HatsC2SPayload> CODEC = StreamCodec.composite(
-                ByteBufCodecs.BYTE, HatsC2SPayload::typeId,
-                ByteBufCodecs.byteArray(32767), HatsC2SPayload::payload,
-                HatsC2SPayload::new);
-        @Override
-        public Type<? extends CustomPacketPayload> type() { return TYPE; }
-    }
-
-    public record HatsS2CPayload(byte typeId, byte[] payload) implements CustomPacketPayload {
-        public static final CustomPacketPayload.Type<HatsS2CPayload> TYPE = new CustomPacketPayload.Type<>(CHANNEL_ID_S2C);
-        public static final StreamCodec<FriendlyByteBuf, HatsS2CPayload> CODEC = StreamCodec.composite(
-                ByteBufCodecs.BYTE, HatsS2CPayload::typeId,
-                ByteBufCodecs.byteArray(32767), HatsS2CPayload::payload,
-                HatsS2CPayload::new);
-        @Override
-        public Type<? extends CustomPacketPayload> type() { return TYPE; }
-    }
-
-    public static void register(IEventBus modEventBus) {
-        modEventBus.addListener(RegisterPayloadHandlersEvent.class, HatPacketHandler::onRegisterPayloads);
-    }
-
-    private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(AstryxionsHats.MODID).versioned("1");
-
-        registrar.playToServer(HatsC2SPayload.TYPE, HatsC2SPayload.CODEC, (payload, context) -> {
-            context.enqueueWork(() -> {
-                if (!(context.player() instanceof ServerPlayer serverPlayer)) return;
-                FriendlyByteBuf copy = new FriendlyByteBuf(Unpooled.wrappedBuffer(payload.payload()));
+    public static void register() {
+        ServerPlayNetworking.registerGlobalReceiver(CHANNEL_ID, (server, player, handler, buf, responseSender) -> {
+            byte type = buf.readByte();
+            FriendlyByteBuf copy = new FriendlyByteBuf(buf.copy());
+            server.execute(() -> {
                 try {
-                    switch (payload.typeId()) {
+                    switch (type) {
                         case ID_EQUIP -> {
                             PacketEquipHat msg = PacketEquipHat.decode(copy);
-                            PacketEquipHat.handle(msg, serverPlayer);
+                            PacketEquipHat.handle(msg, player);
                         }
                         case ID_OPEN_COSMETIC -> {
                             PacketOpenCosmeticMenu msg = new PacketOpenCosmeticMenu();
-                            PacketOpenCosmeticMenu.handle(msg, serverPlayer);
+                            PacketOpenCosmeticMenu.handle(msg, player);
                         }
                         case ID_OPEN_HUNTING -> {
                             PacketOpenHuntingMenu msg = new PacketOpenHuntingMenu();
-                            PacketOpenHuntingMenu.handle(msg, serverPlayer);
+                            PacketOpenHuntingMenu.handle(msg, player);
                         }
                         default -> {}
                     }
@@ -80,20 +47,18 @@ public class HatPacketHandler {
             });
         });
 
-        registrar.playToClient(HatsS2CPayload.TYPE, HatsS2CPayload.CODEC, (payload, context) -> {
-            context.enqueueWork(() -> {
-                FriendlyByteBuf copy = new FriendlyByteBuf(Unpooled.wrappedBuffer(payload.payload()));
+        ClientPlayNetworking.registerGlobalReceiver(CHANNEL_ID, (client, handler, buf, responseSender) -> {
+            byte type = buf.readByte();
+            FriendlyByteBuf copy = new FriendlyByteBuf(buf.copy());
+            client.execute(() -> {
                 try {
-                    switch (payload.typeId()) {
+                    switch (type) {
                         case ID_SYNC_HAT -> {
                             PacketSyncHat msg = PacketSyncHat.decode(copy);
                             PacketSyncHat.handle(msg);
                         }
                         case ID_HAT_UNLOCKED -> {
-                            var level = context.player().level();
-                            if (level == null) return;
-                            var registryAccess = level.registryAccess();
-                            PacketHatUnlocked msg = PacketHatUnlocked.decode(copy, registryAccess);
+                            PacketHatUnlocked msg = PacketHatUnlocked.decode(copy);
                             PacketHatUnlocked.handle(msg);
                         }
                         case ID_SYNC_HAT_PART -> {
@@ -110,38 +75,31 @@ public class HatPacketHandler {
     }
 
     public static void sendToPlayer(ServerPlayer player, byte packetId, FriendlyByteBuf buf) {
-        byte[] arr = new byte[buf.readableBytes()];
-        buf.getBytes(buf.readerIndex(), arr);
-        sendToPlayer(player, packetId, arr);
-    }
-
-    public static void sendToPlayer(ServerPlayer player, byte packetId, byte[] payload) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, new HatsS2CPayload(packetId, payload));
+        if (ServerPlayNetworking.canSend(player, CHANNEL_ID)) {
+            FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
+            out.writeByte(packetId);
+            out.writeBytes(buf);
+            ServerPlayNetworking.send(player, CHANNEL_ID, out);
+        }
     }
 
     public static void sendEquipToServer(String hatId) {
         FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
         out.writeByte(ID_EQUIP);
         PacketEquipHat.encode(new PacketEquipHat(hatId), out);
-        byte[] arr = new byte[out.readableBytes()];
-        out.getBytes(out.readerIndex(), arr);
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new HatsC2SPayload(ID_EQUIP, arr));
+        ClientPlayNetworking.send(CHANNEL_ID, out);
     }
 
     public static void sendOpenCosmeticToServer() {
         FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
         out.writeByte(ID_OPEN_COSMETIC);
-        byte[] arr = new byte[out.readableBytes()];
-        out.getBytes(out.readerIndex(), arr);
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new HatsC2SPayload(ID_OPEN_COSMETIC, arr));
+        ClientPlayNetworking.send(CHANNEL_ID, out);
     }
 
     public static void sendOpenHuntingToServer() {
         FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
         out.writeByte(ID_OPEN_HUNTING);
-        byte[] arr = new byte[out.readableBytes()];
-        out.getBytes(out.readerIndex(), arr);
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new HatsC2SPayload(ID_OPEN_HUNTING, arr));
+        ClientPlayNetworking.send(CHANNEL_ID, out);
     }
 
     public static void sendSyncHatToPlayer(ServerPlayer player, net.minecraft.nbt.CompoundTag data) {
@@ -151,12 +109,9 @@ public class HatPacketHandler {
     }
 
     public static void sendHatUnlockedToPlayer(ServerPlayer player, net.minecraft.world.item.ItemStack hatStack) {
-        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), player.registryAccess());
-        PacketHatUnlocked.encode(new PacketHatUnlocked(hatStack), buf, player.registryAccess());
-        byte[] arr = new byte[buf.readableBytes()];
-        buf.getBytes(buf.readerIndex(), arr);
-        buf.release();
-        sendToPlayer(player, ID_HAT_UNLOCKED, arr);
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        PacketHatUnlocked.encode(new PacketHatUnlocked(hatStack), buf);
+        sendToPlayer(player, ID_HAT_UNLOCKED, buf);
     }
 
     public static void sendSyncHatPartToPlayer(ServerPlayer player, int entityId, net.minecraft.nbt.CompoundTag tag) {

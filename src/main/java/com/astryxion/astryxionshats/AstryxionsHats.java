@@ -9,77 +9,58 @@ import com.astryxion.astryxionshats.common.hat.HatUnlockHandler;
 import com.astryxion.astryxionshats.common.network.HatPacketHandler;
 import com.astryxion.astryxionshats.common.registry.HatItemRegistry;
 import com.mojang.logging.LogUtils;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.fml.common.Mod;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import org.slf4j.Logger;
 
 /**
  * Main mod class for Astryxion's Hats
- * NeoForge 1.21.1 entry
+ * Fabric 1.20.1 entry
  */
-@Mod(AstryxionsHats.MODID)
-public class AstryxionsHats {
+public class AstryxionsHats implements ModInitializer {
 
     public static final String MODID = "astryxionshats";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public AstryxionsHats(IEventBus modEventBus) {
+    @Override
+    public void onInitialize() {
         Config.load();
 
-        HatItemRegistry.register(modEventBus);
+        HatItemRegistry.register();
 
         HatRarityLoader.load();
-        HatPacketHandler.register(modEventBus);
+        HatPacketHandler.register();
 
-        NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
-        NeoForge.EVENT_BUS.addListener(this::onLivingDeath);
-        NeoForge.EVENT_BUS.addListener(this::onPlayerClone);
-        NeoForge.EVENT_BUS.addListener(this::onPlayerRespawn);
-        NeoForge.EVENT_BUS.addListener(this::onPlayerChangeDimension);
-        NeoForge.EVENT_BUS.addListener(this::onServerStarting);
-
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            com.astryxion.astryxionshats.client.AstryxionsHatsClient.registerClient(modEventBus);
-        }
-
-        LOGGER.info("Astryxion's Hats common setup complete.");
-    }
-
-    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+            var player = handler.getPlayer();
             HatPartEvents.onPlayerJoinLevel(player);
             HatLoginHandler.onPlayerLogin(player);
             HatWelcomeHandler.onPlayerJoin(player);
-        }
-    }
+        });
 
-    private void onLivingDeath(LivingDeathEvent event) {
-        HatUnlockHandler.onMobKilled(event.getEntity(), event.getSource());
-    }
+        ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
+            HatUnlockHandler.onMobKilled(entity, damageSource);
+        });
 
-    private void onPlayerClone(PlayerEvent.Clone event) {
-        HatCloneHandler.onPlayerClone(event.getOriginal(), event.getEntity(), event.isWasDeath());
-    }
+        ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
+            HatCloneHandler.onPlayerClone(oldPlayer, newPlayer, alive);
+        });
 
-    private void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-            HatCloneHandler.onPlayerRespawn(player);
-        }
-    }
+        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+            HatCloneHandler.onPlayerRespawn(newPlayer);
+        });
 
-    private void onPlayerChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+        ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register((player, origin, destination) -> {
             HatCloneHandler.onDimensionChange(player);
-        }
-    }
+        });
 
-    private void onServerStarting(ServerStartingEvent event) {
-        LOGGER.info("Astryxion's Hats server starting.");
+        ServerLifecycleEvents.SERVER_STARTING.register(server ->
+                LOGGER.info("Astryxion's Hats server starting."));
+
+        LOGGER.info("Astryxion's Hats common setup complete.");
     }
 }

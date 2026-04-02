@@ -1,22 +1,15 @@
 package com.astryxion.astryxionshats.client.gui.toast;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 public class HatToast implements Toast {
 
-    private static final int TOAST_WIDTH = 160;
-    private static final int TOAST_HEIGHT = 32;
-    private static final ResourceLocation TOAST_BACKGROUND_SPRITE = ResourceLocation.fromNamespaceAndPath("minecraft", "toast/recipe");
-    /** Same purple as vanilla "New Recipes Unlocked!" title (recipe toast) */
-    private static final int TITLE_COLOR = 0xFF55FF;
+    private static final ResourceLocation TEXTURE = new ResourceLocation("minecraft", "textures/gui/toasts.png");
 
     private final ItemStack hatStack;
 
@@ -25,35 +18,25 @@ public class HatToast implements Toast {
     }
 
     @Override
-    public int width() {
-        return TOAST_WIDTH;
-    }
-
-    @Override
-    public int height() {
-        return TOAST_HEIGHT;
-    }
-
-    @Override
     public Visibility render(
             GuiGraphics gfx,
             ToastComponent toasts,
             long time
     ) {
-        gfx.blitSprite(TOAST_BACKGROUND_SPRITE, 0, 0, TOAST_WIDTH, TOAST_HEIGHT);
+        gfx.blit(TEXTURE, 0, 0, 0, 0, this.width(), this.height());
 
         gfx.drawString(
                 toasts.getMinecraft().font,
-                Component.literal("Hat Unlocked!").withStyle(Style.EMPTY.withColor(TextColor.fromRgb(TITLE_COLOR))),
+                Component.literal("Hat Unlocked!"),
                 30,
                 7,
-                0xFFFFFF,
+                0xFFFFAA,
                 false
         );
 
         gfx.drawString(
                 toasts.getMinecraft().font,
-                hatStack.getHoverName().copy().withStyle(ChatFormatting.BLACK),
+                hatStack.getHoverName(),
                 30,
                 18,
                 0xFFFFFF,

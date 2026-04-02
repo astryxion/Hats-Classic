@@ -20,7 +20,7 @@ public class HatSpawnHandler {
 
     private static final Random RANDOM = new Random();
 
-    /** Tracks which entities have already had a hat roll (per dimension+UUID) */
+    /** Tracks which entities have already had a hat roll (replaces entity NBT for Fabric) */
     private static final Set<String> HAT_ROLLED = ConcurrentHashMap.newKeySet();
 
     /** Tracks which entities have had spawn logic run (used when entity-join mixin is not available) */

@@ -2,7 +2,7 @@ package com.astryxion.astryxionshats.common.network;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
 import com.astryxion.astryxionshats.common.server.ServerHatHandler;
-import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,10 +27,10 @@ public class PacketEquipHat {
         if (player != null) {
             ServerHatHandler.handleEquip(player, msg.hatId);
             if (!player.isCreative()) {
-                AdvancementHolder holder = player.getServer().getAdvancements()
-                        .get(ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, "hats/trendsetter"));
-                if (holder != null) {
-                    player.getAdvancements().award(holder, "unlock_via_code");
+                Advancement adv = player.getServer().getAdvancements()
+                        .getAdvancement(new ResourceLocation(AstryxionsHats.MODID, "hats/trendsetter"));
+                if (adv != null) {
+                    player.getAdvancements().award(adv, "unlock_via_code");
                 }
             }
         }

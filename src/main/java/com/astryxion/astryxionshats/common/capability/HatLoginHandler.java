@@ -12,7 +12,7 @@ public class HatLoginHandler {
             HatPacketHandler.sendSyncHatPartToPlayer(
                     player,
                     player.getId(),
-                    part.serializeNBT(player.getServer().registryAccess())
+                    part.serializeNBT()
             );
         }
     }

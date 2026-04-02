@@ -16,7 +16,7 @@ public final class HatRarityLoader {
 
     public static void load() {
         try {
-            ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(
+            ResourceLocation loc = new ResourceLocation(
                     AstryxionsHats.MODID,
                     "rarity/hat_rarity.json"
             );

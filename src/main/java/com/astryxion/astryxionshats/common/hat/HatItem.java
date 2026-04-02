@@ -3,7 +3,6 @@ package com.astryxion.astryxionshats.common.hat;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
-import net.minecraft.world.level.Level;
 
 public class HatItem extends Item {
 
@@ -14,7 +13,8 @@ public class HatItem extends Item {
         this.hatId = hatId;
     }
 
-    public Rarity getRarity(ItemStack stack, Level level) {
+    @Override
+    public Rarity getRarity(ItemStack stack) {
         HatRarity rarity = HatRarityLoader.get(hatId);
 
         return switch (rarity) {

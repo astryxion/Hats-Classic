@@ -4,14 +4,13 @@ import com.astryxion.astryxionshats.common.hat.HatMode;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import net.neoforged.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Clean config for Astryxion's Hats (NeoForge – file-based)
+ * Clean config for Astryxion's Hats (Fabric – file-based)
  */
 public class Config {
 
@@ -32,7 +31,9 @@ public class Config {
        ========================= */
 
     private static Path getConfigPath() {
-        return FMLPaths.CONFIGDIR.get().resolve("astryxionshats.json");
+        return net.fabricmc.loader.api.FabricLoader.getInstance()
+                .getConfigDir()
+                .resolve("astryxionshats.json");
     }
 
     /* =========================

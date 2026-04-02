@@ -33,7 +33,7 @@ public class HatCloneHandler {
     private static void syncEverything(ServerPlayer player) {
         var part = HatPartCapability.get(player);
         if (part != null) {
-            HatPacketHandler.sendSyncHatPartToPlayer(player, player.getId(), part.serializeNBT(player.getServer().registryAccess()));
+            HatPacketHandler.sendSyncHatPartToPlayer(player, player.getId(), part.serializeNBT());
         }
 
         HatDataCapability.get(player).ifPresent(data -> {

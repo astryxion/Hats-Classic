@@ -31,7 +31,7 @@ public class PacketSyncHatPart {
             Entity entity = Minecraft.getInstance().level.getEntity(msg.playerId);
             if (entity instanceof Player player) {
                 var part = HatPartCapability.getOrCreate(player);
-                if (part != null) part.deserializeNBT(msg.tag, Minecraft.getInstance().level.registryAccess());
+                if (part != null) part.deserializeNBT(msg.tag);
             }
         }
     }

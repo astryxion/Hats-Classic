@@ -5,7 +5,7 @@ import com.astryxion.astryxionshats.common.hat.PlayerHatDataImpl;
 import net.minecraft.nbt.CompoundTag;
 
 /**
- * NeoForge: PlayerHatData is accessed via HatDataCapability.get(Player).
+ * Fabric: PlayerHatData is accessed via HatDataCapability.get(Player).
  * This class is kept for reference; serialization is in PlayerHatDataImpl.
  */
 public final class HatDataProvider {

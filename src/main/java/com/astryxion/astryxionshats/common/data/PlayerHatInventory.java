@@ -1,6 +1,5 @@
 package com.astryxion.astryxionshats.common.data;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -9,9 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import java.util.*;
 
@@ -34,15 +31,13 @@ public class PlayerHatInventory extends SavedData {
     // Get instance
     // ============================
 
-    private static final SavedData.Factory<PlayerHatInventory> FACTORY = new SavedData.Factory<>(
-            PlayerHatInventory::new,
-            (tag, provider) -> tag.isEmpty() ? new PlayerHatInventory() : PlayerHatInventory.load(tag),
-            null
-    );
-
     public static PlayerHatInventory get(ServerLevel level) {
-        DimensionDataStorage storage = level.getDataStorage();
-        return storage.computeIfAbsent(FACTORY, DATA_NAME);
+
+        return level.getDataStorage().computeIfAbsent(
+                PlayerHatInventory::load,
+                PlayerHatInventory::new,
+                DATA_NAME
+        );
     }
 
     // ============================
@@ -104,7 +99,7 @@ public class PlayerHatInventory extends SavedData {
     // ============================
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+    public CompoundTag save(CompoundTag tag) {
 
         ListTag playersList = new ListTag();
 
@@ -168,7 +163,7 @@ public class PlayerHatInventory extends SavedData {
 
             for (int j = 0; j < hatsTag.size(); j++) {
 
-                ResourceLocation id = ResourceLocation.parse(hatsTag.getString(j));
+                ResourceLocation id = new ResourceLocation(hatsTag.getString(j));
                 Item item = BuiltInRegistries.ITEM.get(id);
 
                 if (item != null) {
@@ -181,7 +176,7 @@ public class PlayerHatInventory extends SavedData {
             // Load equipped
             if (playerTag.contains("Equipped")) {
 
-                ResourceLocation id = ResourceLocation.parse(playerTag.getString("Equipped"));
+                ResourceLocation id = new ResourceLocation(playerTag.getString("Equipped"));
                 Item item = BuiltInRegistries.ITEM.get(id);
 
                 if (item != null) {
