@@ -24,6 +24,9 @@ import java.util.Random;
 @Mod.EventBusSubscriber(modid = AstryxionsHats.MODID)
 public class HatSpawnHandler {
 
+    public static void onFirstTick(LivingEntity entity) {
+    }
+
     private static final Random RANDOM = new Random();
 
     /** Persistent lock so mobs are evaluated ONCE only */

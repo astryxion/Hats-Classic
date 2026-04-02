@@ -51,12 +51,19 @@ minecraft {
 
         data {
             workingDirectory project.file('run-data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/resources/')
         }
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
+// Real mod assets live under src/main/resources/resources/ (Fabric-style layout); map them to the jar root (assets/, META-INF/, data/).
+sourceSets {
+    main {
+        resources {
+            srcDirs = ['src/main/resources/resources', 'src/generated/resources']
+        }
+    }
+}
 
 repositories {
 
@@ -74,7 +81,9 @@ dependencies {
     // MO' BENDS OPTIONAL COMPAT
     // ============================
 
-    compileOnly name: "MoBends_1.20.1-3.0.4"
+    if (file('libs/MoBends_1.20.1-3.0.4.jar').exists()) {
+        compileOnly name: "MoBends_1.20.1-3.0.4"
+    }
 }
 
 tasks.named('processResources', ProcessResources).configure {

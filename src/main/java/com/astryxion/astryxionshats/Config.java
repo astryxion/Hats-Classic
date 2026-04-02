@@ -61,11 +61,11 @@ public class Config {
        Cached values
        ========================= */
 
-    public static boolean enableHats;
-    public static boolean enableMobHats;
-    public static boolean enablePlayerHats;
-    public static double mobHatSpawnChance;
-    public static HatMode hatMode;
+    public static boolean enableHats = true;
+    public static boolean enableMobHats = true;
+    public static boolean enablePlayerHats = true;
+    public static double mobHatSpawnChance = 0.6D;
+    public static HatMode hatMode = HatMode.HUNTING;
 
     @SubscribeEvent
     public static void onLoad(final ModConfigEvent.Loading event) {

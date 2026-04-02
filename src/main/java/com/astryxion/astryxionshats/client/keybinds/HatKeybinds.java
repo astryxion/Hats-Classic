@@ -1,5 +1,6 @@
 package com.astryxion.astryxionshats.client.keybinds;
 
+import com.astryxion.astryxionshats.AstryxionsHats;
 import com.astryxion.astryxionshats.client.gui.HatScreen;
 
 import net.minecraft.client.KeyMapping;
@@ -21,7 +22,7 @@ public class HatKeybinds {
     // MOD BUS -> register key
     // =========================
 
-    @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @Mod.EventBusSubscriber(modid = AstryxionsHats.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class Register {
 
         @SubscribeEvent
@@ -41,7 +42,7 @@ public class HatKeybinds {
     // FORGE BUS -> listen press
     // =========================
 
-    @Mod.EventBusSubscriber(value = Dist.CLIENT)
+    @Mod.EventBusSubscriber(modid = AstryxionsHats.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
     public static class Listener {
 
         @SubscribeEvent

@@ -12,6 +12,7 @@ import com.astryxion.astryxionshats.common.network.PacketEquipHat;
 import com.astryxion.astryxionshats.common.network.PacketOpenCosmeticMenu;
 import com.astryxion.astryxionshats.common.network.PacketOpenHuntingMenu; // 🔧 Added this!
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -20,6 +21,7 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -28,6 +30,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class HatScreen extends Screen {
+
+    public static LivingEntity getPreviewEntityForRendering() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof HatScreen && mc.player != null) {
+            return mc.player;
+        }
+        return null;
+    }
 
     private final List<Item> unlockedHats = new ArrayList<>();
     private List<Item> filteredHats = new ArrayList<>();
