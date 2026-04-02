@@ -1,13 +1,11 @@
 package com.astryxion.astryxionshats.common.registry;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
-import com.astryxion.astryxionshats.common.hat.HatItem;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import net.neoforged.neoforge.registries.DeferredItem;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -15,11 +13,21 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Core hat item registry (NeoForge)
- * Auto registers all hats from models folder
+ * Core hat item registry
+ *
+ * - Auto registers all hats from models folder
+ * - No creative tab logic
+ * - Clean permanent system
  */
 public final class HatItemRegistry {
 
+    public static final DeferredRegister<Item> ITEMS =
+            DeferredRegister.create(ForgeRegistries.ITEMS, AstryxionsHats.MODID);
+
+    /** All registered hats (registry objects) */
+    public static final List<RegistryObject<Item>> ALL_HATS = new ArrayList<>();
+
+    /** Names to skip (dev junk / parents / icons) */
     private static final Set<String> BLACKLIST = Set.of(
             "hatparent",
             "hatparent2",
@@ -27,34 +35,40 @@ public final class HatItemRegistry {
             "haticon"
     );
 
-    private static final List<DeferredItem<Item>> ALL_HATS_REGISTRY = new ArrayList<>();
-    private static final List<Item> ALL_HATS_LIST = new ArrayList<>();
-
-    public static List<Item> getAllHats() {
-        if (ALL_HATS_LIST.isEmpty() && !ALL_HATS_REGISTRY.isEmpty()) {
-            for (DeferredItem<Item> ro : ALL_HATS_REGISTRY) {
-                ALL_HATS_LIST.add(ro.get());
-            }
-        }
-        return new ArrayList<>(ALL_HATS_LIST);
-    }
-
-    public static List<Item> getRawAllHatsList() {
-        getAllHats();
-        return ALL_HATS_LIST;
-    }
-
-    private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(AstryxionsHats.MODID);
-
     private HatItemRegistry() {}
 
-    public static void register(IEventBus modEventBus) {
+    // =============================
+    // Public register entry
+    // =============================
+
+    public static void register(IEventBus bus) {
         autoRegisterHats();
-        ITEMS.register(modEventBus);
+        ITEMS.register(bus);
     }
 
+    // =============================
+    // Expose real Item list (FOR SPAWNING, RANDOMIZER, ETC)
+    // =============================
+
+    public static List<Item> getAllHats() {
+
+        List<Item> hats = new ArrayList<>();
+
+        for (RegistryObject<Item> reg : ALL_HATS) {
+            hats.add(reg.get());
+        }
+
+        return hats;
+    }
+
+    // =============================
+    // Auto scan model files
+    // =============================
+
     private static void autoRegisterHats() {
+
         try {
+
             Path modelsPath = getResourcePath(
                     "assets/" + AstryxionsHats.MODID + "/models/item"
             );
@@ -67,22 +81,33 @@ public final class HatItemRegistry {
             Files.list(modelsPath)
                     .filter(p -> p.toString().endsWith(".json"))
                     .forEach(path -> {
+
                         String name = path.getFileName()
                                 .toString()
                                 .replace(".json", "");
 
-                        if (BLACKLIST.contains(name)) return;
+                        if (BLACKLIST.contains(name)) {
+                            return;
+                        }
 
-                        DeferredItem<Item> reg = ITEMS.register(name, () -> new HatItem(name));
-                        ALL_HATS_REGISTRY.add(reg);
+                        RegistryObject<Item> item = ITEMS.register(
+                                name,
+                                () -> new Item(new Item.Properties())
+                        );
+
+                        ALL_HATS.add(item);
                     });
 
-            AstryxionsHats.LOGGER.info("Auto-registered {} hats", ALL_HATS_REGISTRY.size());
+            AstryxionsHats.LOGGER.info("Auto-registered {} hats", ALL_HATS.size());
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to auto register hats", e);
         }
     }
+
+    // =============================
+    // Resource folder access
+    // =============================
 
     private static Path getResourcePath(String path)
             throws IOException, URISyntaxException {
@@ -94,11 +119,14 @@ public final class HatItemRegistry {
         if (url == null) return null;
 
         if (url.getProtocol().equals("jar")) {
+
             FileSystem fs = FileSystems.newFileSystem(
                     url.toURI(),
                     Collections.emptyMap()
             );
+
             return fs.getPath(path);
+
         } else {
             return Paths.get(url.toURI());
         }

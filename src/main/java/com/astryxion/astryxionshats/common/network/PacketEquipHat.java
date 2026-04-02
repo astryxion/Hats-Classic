@@ -2,10 +2,13 @@ package com.astryxion.astryxionshats.common.network;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
 import com.astryxion.astryxionshats.common.server.ServerHatHandler;
-import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.Advancement;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkEvent;
+
+import java.util.function.Supplier;
 
 public class PacketEquipHat {
 
@@ -23,16 +26,26 @@ public class PacketEquipHat {
         return new PacketEquipHat(buf.readUtf());
     }
 
-    public static void handle(PacketEquipHat msg, ServerPlayer player) {
-        if (player != null) {
-            ServerHatHandler.handleEquip(player, msg.hatId);
-            if (!player.isCreative()) {
-                AdvancementHolder holder = player.getServer().getAdvancements()
-                        .get(ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, "hats/trendsetter"));
-                if (holder != null) {
-                    player.getAdvancements().award(holder, "unlock_via_code");
+    public static void handle(PacketEquipHat msg, Supplier<NetworkEvent.Context> ctx) {
+        ctx.get().enqueueWork(() -> {
+            ServerPlayer player = ctx.get().getSender();
+            if (player != null) {
+                // 1. Actually equip the hat (This still happens in Creative so you can see the hat!)
+                ServerHatHandler.handleEquip(player, msg.hatId);
+
+                // 2. 🔧 Trigger Universal "Trendsetter" Advancement
+                // 🛑 CREATIVE CHECK: Only award if the player is NOT in Creative Mode
+                if (!player.isCreative()) {
+                    Advancement adv = player.getServer().getAdvancements()
+                            .getAdvancement(new ResourceLocation(AstryxionsHats.MODID, "hats/trendsetter"));
+
+                    if (adv != null) {
+                        player.getAdvancements().award(adv, "unlock_via_code");
+                    }
                 }
             }
-        }
+        });
+
+        ctx.get().setPacketHandled(true);
     }
 }

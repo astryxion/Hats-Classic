@@ -66,7 +66,6 @@ public class PlayerHatDataImpl implements PlayerHatData {
 
     @Override
     public void copyFrom(PlayerHatData other) {
-        if (other == this) return;
         this.unlockedHats.clear();
         this.unlockedHats.addAll(other.getUnlockedHats());
         this.equippedHat = other.getEquippedHat();
@@ -99,12 +98,12 @@ public class PlayerHatDataImpl implements PlayerHatData {
         if (nbt.contains("UnlockedHats", Tag.TAG_LIST)) {
             ListTag list = nbt.getList("UnlockedHats", Tag.TAG_STRING);
             for (int i = 0; i < list.size(); i++) {
-                unlockedHats.add(ResourceLocation.parse(list.getString(i)));
+                unlockedHats.add(new ResourceLocation(list.getString(i)));
             }
         }
 
         if (nbt.contains("EquippedHat", Tag.TAG_STRING)) {
-            this.equippedHat = ResourceLocation.parse(nbt.getString("EquippedHat"));
+            this.equippedHat = new ResourceLocation(nbt.getString("EquippedHat"));
         } else {
             this.equippedHat = null;
         }

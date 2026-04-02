@@ -1,15 +1,29 @@
 package com.astryxion.astryxionshats.common.capability;
 
 import com.astryxion.astryxionshats.AstryxionsHats;
+
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
+
+import net.minecraftforge.event.AttachCapabilitiesEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
 /**
- * Hat data is provided via HatDataCapability.get(Player) (NeoForge).
+ * Attaches hat data capability to players
  */
-public final class HatCapabilityEvents {
+@Mod.EventBusSubscriber(modid = AstryxionsHats.MODID)
+public class HatCapabilityEvents {
 
     private static final ResourceLocation HAT_DATA_ID =
-            ResourceLocation.fromNamespaceAndPath(AstryxionsHats.MODID, "hat_data");
+            new ResourceLocation(AstryxionsHats.MODID, "hat_data");
 
-    private HatCapabilityEvents() {}
+    @SubscribeEvent
+    public static void onAttachCapabilities(AttachCapabilitiesEvent<?> event) {
+
+        if (!(event.getObject() instanceof Player))
+            return;
+
+        event.addCapability(HAT_DATA_ID, new HatDataProvider());
+    }
 }
