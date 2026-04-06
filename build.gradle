@@ -51,16 +51,17 @@ minecraft {
 
         data {
             workingDirectory project.file('run-data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/resources/')
+            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
         }
     }
 }
 
-// Real mod assets live under src/main/resources/resources/ (Fabric-style layout); map them to the jar root (assets/, META-INF/, data/).
+// Standard Forge layout: everything under src/main/resources/ lands at jar root (META-INF/mods.toml, assets/, data/, mixins).
+// Do not point only at src/main/resources/resources — that folder is empty here and produced jars with no mods.toml (mod invisible in-game / on CurseForge).
 sourceSets {
     main {
         resources {
-            srcDirs = ['src/main/resources/resources', 'src/generated/resources']
+            srcDirs = ['src/main/resources', 'src/generated/resources']
         }
     }
 }
