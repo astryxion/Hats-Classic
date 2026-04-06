@@ -1,8 +1,10 @@
 package com.astryxion.hats.common.network;
 
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.hat.HatPartCapability;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.network.NetworkEvent;
@@ -121,5 +123,31 @@ public class HatPacketHandler {
                 PacketDistributor.PLAYER.with(() -> player),
                 msg
         );
+    }
+
+    /**
+     * Syncs this player's equipped hat (render capability) to every client that can see them, including their own.
+     * Required for multiplayer so other players see the correct hat model.
+     */
+    public static void syncPlayerHatPartToTracking(ServerPlayer player) {
+        if (player == null || player.level().isClientSide()) {
+            return;
+        }
+        player.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
+                CHANNEL.send(
+                        PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
+                        new PacketSyncHatPart(player.getId(), part.serializeNBT())
+                ));
+    }
+
+    /**
+     * Sends one player's hat state to a single observer (e.g. when they start tracking that player).
+     */
+    public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {
+        if (observer == null || hatOwner == null || observer.level().isClientSide()) {
+            return;
+        }
+        hatOwner.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
+                sendToPlayer(observer, new PacketSyncHatPart(hatOwner.getId(), part.serializeNBT())));
     }
 }

@@ -4,8 +4,6 @@ import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.hat.HatPartCapability;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.PacketSyncHat;
-import com.astryxion.hats.common.network.PacketSyncHatPart;
-import com.astryxion.hats.common.hat.PlayerHatData;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -62,10 +60,7 @@ public class HatCloneHandler {
 
     // Helper to keep the code clean and ensure both GUI and Visuals sync together
     private static void syncEverything(ServerPlayer player) {
-        // Sync Visual Hat (2 arguments: ID and NBT)
-        player.getCapability(HatPartCapability.HAT_PART).ifPresent(part -> {
-            HatPacketHandler.sendToPlayer(player, new PacketSyncHatPart(player.getId(), part.serializeNBT()));
-        });
+        HatPacketHandler.syncPlayerHatPartToTracking(player);
 
         // Sync GUI Unlocks (1 argument: NBT)
         player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {

@@ -1,9 +1,9 @@
 package com.astryxion.hats.common.server;
 
+import com.astryxion.hats.common.capability.HatDataCapability;
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.PacketSyncHat;
-import com.astryxion.hats.common.capability.HatDataCapability;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -36,6 +36,7 @@ public final class ServerHatHandler {
         if (hatId.equals("none")) {
 
             HatManager.clearHat(player);
+            HatPacketHandler.syncPlayerHatPartToTracking(player);
 
             // 🔧 FIXED: Tell the capability memory we are wearing nothing
             player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
@@ -65,6 +66,7 @@ public final class ServerHatHandler {
         // Equip on server (Visual/Part layer)
         ItemStack stack = new ItemStack(item);
         HatManager.setHatStack(player, stack);
+        HatPacketHandler.syncPlayerHatPartToTracking(player);
 
         // 🔧 FIXED: Tell the capability memory exactly which hat we are wearing
         player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
