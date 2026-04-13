@@ -1,0 +1,281 @@
+{
+  "babyturtle": "EPIC",
+  "bandana": "COMMON",
+  "bandanargb": "EPIC",
+  "baseballeaster": "UNCOMMON",
+  "baseballhat": "COMMON",
+  "baseballhatfestive": "RARE",
+  "baseballhatjuly": "UNCOMMON",
+  "baseballhatrgb": "EPIC",
+  "batwinghat": "EPIC",
+
+  "beanie": "COMMON",
+  "beanieeaster": "UNCOMMON",
+  "beaniefestive": "UNCOMMON",
+  "beaniejuly": "UNCOMMON",
+  "beaniergb": "EPIC",
+  "beaniespooky": "UNCOMMON",
+
+  "beehat": "EPIC",
+  "beehatpride": "EPIC",
+  "beehattrans": "EPIC",
+
+  "bicorne": "COMMON",
+  "bigbrain": "COMMON",
+  "bigcrown": "UNCOMMON",
+  "bigeyes": "COMMON",
+  "bigribbon": "UNCOMMON",
+  "bigstevehead": "UNCOMMON",
+
+  "bluefireeye": "RARE",
+  "bowler": "COMMON",
+  "breadhat": "UNCOMMON",
+  "brownbrick": "COMMON",
+  "bucket": "COMMON",
+  "bunnyhat": "RARE",
+  "burgerhat": "COMMON",
+  "burning_m_bison": "EPIC",
+
+  "caddycap": "COMMON",
+  "camera": "RARE",
+  "camerabeard": "UNCOMMON",
+  "candleonhead": "RARE",
+  "candycane": "UNCOMMON",
+  "carrotonstick": "UNCOMMON",
+  "cartoonegg": "COMMON",
+  "cat_hat": "UNCOMMON",
+  "cat_on_head": "RARE",
+  "caterpillar_on_head": "RARE",
+  "chalk_stick": "COMMON",
+  "cheeseslice": "COMMON",
+  "chefshat": "COMMON",
+  "chickenhead": "COMMON",
+  "chickenonhead": "UNCOMMON",
+  "chi_ears": "UNCOMMON",
+  "chocolate_sauced": "RARE",
+
+  "christmascakehat": "EPIC",
+  "christmastree": "EPIC",
+  "clockface": "RARE",
+
+  "cowboy": "COMMON",
+  "cowboyrgb": "EPIC",
+  "crabonhead": "EPIC",
+  "crown": "COMMON",
+  "cuphead": "UNCOMMON",
+  "cyclopseye": "COMMON",
+
+  "dangereqsue": "COMMON",
+  "dangeresquejuly": "UNCOMMON",
+  "demoneyes": "RARE",
+  "demonhorns": "RARE",
+  "digger": "RARE",
+  "dimmahat": "UNCOMMON",
+  "discoball": "EPIC",
+
+  "disguise": "UNCOMMON",
+  "doctorhat": "UNCOMMON",
+  "dorkglassesandteeth": "UNCOMMON",
+  "doubletake": "COMMON",
+
+  "dragonhead": "UNCOMMON",
+  "dragonskull": "UNCOMMON",
+  "dragonskullender": "RARE",
+  "drinkinhat": "UNCOMMON",
+  "druid_antlers": "UNCOMMON",
+  "druid_antlers_rare": "EPIC",
+
+  "dumhat": "UNCOMMON",
+  "dwarfminerbeard": "UNCOMMON",
+
+  "easterhead": "UNCOMMON",
+  "egghead": "EPIC",
+  "eggonhead": "RARE",
+
+  "elfhat": "COMMON",
+  "explorerhat": "COMMON",
+  "eyepatch": "COMMON",
+
+  "fakeblight": "EPIC",
+  "fakefire": "RARE",
+  "farmerbrim": "UNCOMMON",
+
+  "festiveantlers": "EPIC",
+  "festiveribbon": "RARE",
+
+  "finnhood": "UNCOMMON",
+  "fireworks": "EPIC",
+  "fishonhead": "RARE",
+  "flagjuly": "RARE",
+  "flies": "UNCOMMON",
+
+  "floatinghearts": "RARE",
+  "floatingstar": "RARE",
+  "flowercrown": "RARE",
+  "floweronhead": "RARE",
+
+  "foxhat": "RARE",
+  "fro": "COMMON",
+  "frozenhead": "UNCOMMON",
+
+  "fullironhelm": "UNCOMMON",
+
+  "ghostmask": "EPIC",
+  "goggles": "COMMON",
+  "grandmadisguise": "COMMON",
+  "greenbirb": "EPIC",
+
+  "grinchhat": "UNCOMMON",
+  "halo": "COMMON",
+
+  "headbolts": "UNCOMMON",
+  "headphonesblue": "EPIC",
+  "headshot": "COMMON",
+
+  "hockeymask": "RARE",
+  "holyhead": "RARE",
+  "horsemask": "COMMON",
+  "hosthat": "RARE",
+
+  "icedragonskull": "UNCOMMON",
+  "jackohat": "EPIC",
+  "jesterhat": "UNCOMMON",
+  "julydouble": "RARE",
+
+  "kirbymouthful": "EPIC",
+  "largehorns": "COMMON",
+  "lilbow": "COMMON",
+
+  "madscientist": "RARE",
+  "magikarp": "EPIC",
+
+  "megamanhat": "UNCOMMON",
+  "mistletoe": "RARE",
+
+  "mohawk": "COMMON",
+  "monkeyking": "UNCOMMON",
+  "monocle": "UNCOMMON",
+  "moreeyes": "UNCOMMON",
+
+  "murdered": "RARE",
+  "nekoears": "COMMON",
+
+  "palmtree": "EPIC",
+  "paperbag": "COMMON",
+  "partyhat": "COMMON",
+
+  "paypay": "RARE",
+  "penguinbaby": "RARE",
+  "penguinhat": "UNCOMMON",
+
+  "pighead": "COMMON",
+  "pinhead": "RARE",
+  "plaguedoctor": "UNCOMMON",
+
+  "pog": "COMMON",
+  "pohatoe": "EPIC",
+
+  "policebucket": "COMMON",
+  "policesiren": "RARE",
+
+  "poofballhat": "COMMON",
+  "poofballrgb": "EPIC",
+
+  "popehat": "COMMON",
+  "potionhead": "EPIC",
+
+  "presentsstack": "EPIC",
+  "propelhat": "RARE",
+  "questbook": "UNCOMMON",
+
+  "rabbitears": "RARE",
+  "rabbitonhead": "RARE",
+
+  "rainboworbiters": "EPIC",
+  "ranahat": "COMMON",
+
+  "redeyes": "RARE",
+  "rednose": "UNCOMMON",
+  "redstache": "UNCOMMON",
+
+  "rgbbigribbon": "EPIC",
+  "rgbbowler": "EPIC",
+  "rgbdragonskull": "EPIC",
+  "rgbdrinkinhat": "EPIC",
+  "rgbeasterhead": "EPIC",
+  "rgbfullhelm": "EPIC",
+  "rgbpartyhat": "EPIC",
+  "rgbsmallbowler": "EPIC",
+  "rgbsunglasses": "EPIC",
+  "rgbtoptophathat": "EPIC",
+  "rgbushanka": "EPIC",
+
+  "rock": "UNCOMMON",
+  "rubbernipple": "COMMON",
+
+  "sandcastle": "EPIC",
+  "santaclaus": "RARE",
+  "sausage": "COMMON",
+  "seaweedhat": "RARE",
+
+  "shakehat": "UNCOMMON",
+  "sheep": "COMMON",
+  "shrekears": "UNCOMMON",
+
+  "shroomcap": "UNCOMMON",
+  "simsgem": "RARE",
+  "smokingpipe": "RARE",
+
+  "snowmanbaby": "RARE",
+  "sombrero": "COMMON",
+
+  "sonichood": "RARE",
+  "spadesoldier": "RARE",
+
+  "spiderweb": "UNCOMMON",
+  "springer": "UNCOMMON",
+  "sprout": "COMMON",
+  "spyzombie": "UNCOMMON",
+
+  "stackofeggs": "EPIC",
+  "stress": "RARE",
+
+  "summerhat": "COMMON",
+  "sunglasses": "RARE",
+  "sunglassesbig": "RARE",
+
+  "supersandhat": "RARE",
+  "swimmer": "COMMON",
+
+  "tinkerhat": "UNCOMMON",
+  "topcathat": "RARE",
+
+  "tophat": "COMMON",
+  "toptophathat": "UNCOMMON",
+
+  "triangleshades": "COMMON",
+  "tricorne": "COMMON",
+
+  "tvhead": "EPIC",
+
+  "unicornhorn": "UNCOMMON",
+  "ushanka": "COMMON",
+
+  "vikinghatbeard": "RARE",
+  "villagernose": "COMMON",
+
+  "winghat": "RARE",
+  "zigzagwitchhat": "RARE",
+
+  "acornhat": "COMMON",
+  "aegishat": "RARE",
+  "alienphil": "RARE",
+  "amalgalichhat": "EPIC",
+  "angrymask": "UNCOMMON",
+  "antlers": "UNCOMMON",
+  "apple": "UNCOMMON",
+  "artsy": "EPIC",
+  "artsy_doll": "EPIC",
+  "azumanga_hat": "RARE",
+  "babydolphin": "EPIC"
+}

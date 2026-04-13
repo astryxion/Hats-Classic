@@ -1,0 +1,22 @@
+{
+  "display": {
+    "icon": {
+      "item": "minecraft:leather_helmet"
+    },
+    "title": {
+      "text": "Astryxion's Hats"
+    },
+    "description": {
+      "text": "The quest for the perfect fit begins here."
+    },
+    "background": "minecraft:textures/block/basalt_side.png",
+    "show_toast": false,
+    "announce_to_chat": false,
+    "visible": true
+  },
+  "criteria": {
+    "auto_unlock": {
+      "trigger": "minecraft:tick"
+    }
+  }
+}
