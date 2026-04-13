@@ -1,22 +1,19 @@
 package com.astryxion.hats.common.capability;
 
-import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.hat.HatPartCapability;
 import com.astryxion.hats.common.network.HatPacketHandler;
-
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = Hats.MODID)
 public class HatLoginHandler {
 
-    @SubscribeEvent
-    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-
-        if (!(event.getEntity() instanceof ServerPlayer player))
-            return;
-
-        HatPacketHandler.syncPlayerHatPartToTracking(player);
+    public static void onPlayerLogin(ServerPlayer player) {
+        var part = HatPartCapability.get(player);
+        if (part != null) {
+            HatPacketHandler.sendSyncHatPartToPlayer(
+                    player,
+                    player.getId(),
+                    part.serializeNBT(player.level().getServer().registryAccess())
+            );
+        }
     }
 }

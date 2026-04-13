@@ -3,8 +3,8 @@ package com.astryxion.hats.client.render.helper.individual;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.npc.WanderingTrader;
 
 /**
  * Handles hat positioning for wandering traders
@@ -22,7 +22,7 @@ public class WanderingTraderHatHelper {
     ) {
 
         // Safety (should always be wandering trader)
-        if (!(entity instanceof WanderingTrader))
+        if (entity.getType() != EntityType.WANDERING_TRADER)
             return;
 
         // ============================

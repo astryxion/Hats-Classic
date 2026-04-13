@@ -36,40 +36,29 @@ import com.astryxion.hats.client.render.helper.individual.ZombifiedPiglinHatHelp
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-
-import net.minecraft.world.entity.animal.Cow;
-import net.minecraft.world.entity.animal.Sheep;
-import net.minecraft.world.entity.animal.Pig;
-import net.minecraft.world.entity.animal.Chicken;
-import net.minecraft.world.entity.animal.Squid;
-
-import net.minecraft.world.entity.GlowSquid;
-
-import net.minecraft.world.entity.monster.Zombie;
-import net.minecraft.world.entity.monster.ZombieVillager;
-import net.minecraft.world.entity.monster.Husk;
-import net.minecraft.world.entity.monster.Drowned;
-
-import net.minecraft.world.entity.monster.Skeleton;
-import net.minecraft.world.entity.monster.Stray;
-import net.minecraft.world.entity.monster.WitherSkeleton;
-
+import net.minecraft.world.entity.animal.chicken.Chicken;
+import net.minecraft.world.entity.animal.cow.Cow;
+import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.entity.animal.pig.Pig;
+import net.minecraft.world.entity.animal.sheep.Sheep;
+import net.minecraft.world.entity.animal.squid.GlowSquid;
+import net.minecraft.world.entity.animal.squid.Squid;
 import net.minecraft.world.entity.monster.Creeper;
-
 import net.minecraft.world.entity.monster.EnderMan;
-
-import net.minecraft.world.entity.monster.Pillager;
-import net.minecraft.world.entity.monster.Vindicator;
-import net.minecraft.world.entity.monster.Evoker;
-
-import net.minecraft.world.entity.npc.Villager;
-import net.minecraft.world.entity.npc.WanderingTrader;
-import net.minecraft.world.entity.animal.IronGolem;
-
-import net.minecraft.world.entity.monster.ZombifiedPiglin;
+import net.minecraft.world.entity.monster.illager.Evoker;
+import net.minecraft.world.entity.monster.illager.Pillager;
+import net.minecraft.world.entity.monster.illager.Vindicator;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.piglin.PiglinBrute;
+import net.minecraft.world.entity.monster.skeleton.Skeleton;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.monster.zombie.Drowned;
+import net.minecraft.world.entity.monster.zombie.Husk;
+import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.zombie.ZombieVillager;
+import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin;
+import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.player.Player;
 
 /**
  * Central hat render transform dispatcher
@@ -125,12 +114,12 @@ public class HatRendererHelper {
             return;
         }
 
-        if (entity instanceof Stray) {
+        if (entity.getType() == EntityType.STRAY) {
             StrayHatHelper.apply(entity, poseStack, partialTicks);
             return;
         }
 
-        if (entity instanceof WitherSkeleton) {
+        if (entity.getType() == EntityType.WITHER_SKELETON) {
             WitherSkeletonHatHelper.apply(entity, poseStack, partialTicks);
             return;
         }
@@ -176,7 +165,7 @@ public class HatRendererHelper {
         // VILLAGER FAMILY
         // ============================
 
-        if (entity instanceof WanderingTrader) {
+        if (entity.getType() == EntityType.WANDERING_TRADER) {
             WanderingTraderHatHelper.apply(entity, poseStack, partialTicks);
             return;
         }

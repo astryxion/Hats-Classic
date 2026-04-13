@@ -1,24 +1,26 @@
 package com.astryxion.hats;
 
+import com.astryxion.hats.common.capability.HatCloneHandler;
+import com.astryxion.hats.common.capability.HatLoginHandler;
+import com.astryxion.hats.common.events.HatWelcomeHandler;
+import com.astryxion.hats.common.hat.HatPartEvents;
+import com.astryxion.hats.common.hat.HatRarityLoader;
+import com.astryxion.hats.common.hat.HatUnlockHandler;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.registry.HatItemRegistry;
-
 import com.mojang.logging.LogUtils;
-
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import org.slf4j.Logger;
 
 /**
- * Main entry for the Hats mod.
+ * Main mod class for Astryxion's Hats
+ * NeoForge 1.21.1 entry
  */
 @Mod(Hats.MODID)
 public class Hats {
@@ -26,48 +28,57 @@ public class Hats {
     public static final String MODID = "hats";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public Hats() {
-
-        IEventBus modEventBus =
-                FMLJavaModLoadingContext.get().getModEventBus();
-
-        // =========================
-        // CONFIG (THIS FIXES SPAWNING)
-        // =========================
-
-        ModLoadingContext.get().registerConfig(
-                ModConfig.Type.COMMON,
-                Config.SPEC
-        );
-
-        // =========================
-        // Registries
-        // =========================
+    public Hats(IEventBus modEventBus) {
+        Config.load();
 
         HatItemRegistry.register(modEventBus);
 
-        // =========================
-        // Lifecycle
-        // =========================
+        HatRarityLoader.load();
+        HatPacketHandler.register(modEventBus);
 
-        modEventBus.addListener(this::commonSetup);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+        NeoForge.EVENT_BUS.addListener(this::onLivingDeath);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerClone);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerRespawn);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerChangeDimension);
+        NeoForge.EVENT_BUS.addListener(this::onServerStarting);
 
-        MinecraftForge.EVENT_BUS.register(this);
+        if (FMLEnvironment.getDist().isClient()) {
+            com.astryxion.hats.client.HatsClient.registerClient(modEventBus);
+        }
 
-        LOGGER.info("Hats mod initializing...");
+        LOGGER.info("Astryxion's Hats common setup complete.");
     }
 
-    private void commonSetup(final FMLCommonSetupEvent event) {
-
-        // IMPORTANT: register packets after everything loads
-        event.enqueueWork(HatPacketHandler::register);
-
-        LOGGER.info("Hats mod common setup complete.");
+    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            HatPartEvents.onPlayerJoinLevel(player);
+            HatLoginHandler.onPlayerLogin(player);
+            HatWelcomeHandler.onPlayerJoin(player);
+        }
     }
 
-    @SubscribeEvent
-    public void onServerStarting(ServerStartingEvent event) {
+    private void onLivingDeath(LivingDeathEvent event) {
+        HatUnlockHandler.onMobKilled(event.getEntity(), event.getSource());
+    }
 
-        LOGGER.info("Hats mod server starting.");
+    private void onPlayerClone(PlayerEvent.Clone event) {
+        HatCloneHandler.onPlayerClone(event.getOriginal(), event.getEntity(), event.isWasDeath());
+    }
+
+    private void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            HatCloneHandler.onPlayerRespawn(player);
+        }
+    }
+
+    private void onPlayerChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            HatCloneHandler.onDimensionChange(player);
+        }
+    }
+
+    private void onServerStarting(ServerStartingEvent event) {
+        LOGGER.info("Astryxion's Hats server starting.");
     }
 }

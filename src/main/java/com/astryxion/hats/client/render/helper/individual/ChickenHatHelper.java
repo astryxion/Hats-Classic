@@ -3,7 +3,7 @@ package com.astryxion.hats.client.render.helper.individual;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.Chicken;
+import net.minecraft.world.entity.animal.chicken.Chicken;
 
 public class ChickenHatHelper {
 

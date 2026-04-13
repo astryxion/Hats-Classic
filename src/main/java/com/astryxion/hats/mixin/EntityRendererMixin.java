@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class EntityRendererMixin<T extends Entity> {
 
     @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
-    private void hats$hideNameForPreview(T entity, CallbackInfoReturnable<Boolean> cir) {
+    private void hats$hideNameForPreview(T entity, double distanceSq, CallbackInfoReturnable<Boolean> cir) {
         if (entity == HatScreen.getPreviewEntityForRendering()) {
             cir.setReturnValue(false);
         }

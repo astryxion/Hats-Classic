@@ -9,8 +9,8 @@ public class HatItem extends Item {
 
     private final String hatId;
 
-    public HatItem(String hatId) {
-        super(new Item.Properties().stacksTo(1));
+    public HatItem(String hatId, Item.Properties properties) {
+        super(properties);
         this.hatId = hatId;
     }
 

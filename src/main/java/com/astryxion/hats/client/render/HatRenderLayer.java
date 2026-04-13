@@ -1,152 +1,104 @@
 package com.astryxion.hats.client.render;
 
-import com.astryxion.hats.client.compat.MoBendsHatCompat;
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.client.render.helper.HatRendererHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
-import net.minecraft.client.model.HeadedModel;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 
 import java.lang.reflect.Field;
 
-public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
-        extends RenderLayer<T, M> {
+@SuppressWarnings({"rawtypes", "unchecked"})
+public class HatRenderLayer extends RenderLayer<LivingEntityRenderState, EntityModel<LivingEntityRenderState>> {
 
-    public HatRenderLayer(LivingEntityRenderer<T, M> parent) {
-        super(parent);
+    public HatRenderLayer(LivingEntityRenderer<?, LivingEntityRenderState, ?> parent) {
+        super((LivingEntityRenderer<?, LivingEntityRenderState, EntityModel<LivingEntityRenderState>>) (Object) parent);
     }
 
     @Override
-    public void render(
+    public void submit(
             PoseStack poseStack,
-            MultiBufferSource buffer,
-            int light,
-            T entity,
-            float limbSwing,
-            float limbSwingAmount,
-            float partialTicks,
-            float ageInTicks,
+            SubmitNodeCollector nodeCollector,
+            int lightness,
+            LivingEntityRenderState renderState,
             float netHeadYaw,
             float headPitch
     ) {
+        LivingEntity entity = renderState.getRenderData(HatRenderStateKeys.LIVING_ENTITY);
+        if (entity == null) {
+            return;
+        }
 
         ItemStack hat = HatManager.getHat(entity);
-
-        if (hat.isEmpty())
+        if (hat.isEmpty()) {
             return;
+        }
+
+        float partialTicks = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
 
         poseStack.pushPose();
 
-        EntityModel<T> model = getParentModel();
+        EntityModel<LivingEntityRenderState> model = getParentModel();
 
         boolean applied = false;
 
-        // Mo' Bends: BendsModelPart rigs; vanilla ModelPart sync is incomplete for layers (see MoBendsHatCompat).
-        if (MoBendsHatCompat.isMoBendsLoaded() && MoBendsHatCompat.tryApplyAnimatedMobendsHead(poseStack)) {
+        if (model instanceof HumanoidModel<?> humanoid) {
+            humanoid.head.translateAndRotate(poseStack);
             applied = true;
         }
-
-        // ============================
-        // MODERN DEV PATH
-        // ============================
-
-        if (!applied && model instanceof HeadedModel headed) {
-            headed.getHead().translateAndRotate(poseStack);
-            applied = true;
-        }
-
-        // ============================
-        // PRODUCTION SAFE FALLBACK
-        // ============================
 
         if (!applied) {
-
             ModelPart head = findHeadPart(model);
-
             if (head != null) {
                 head.translateAndRotate(poseStack);
             }
         }
 
-        // ============================
-        // Your helper offsets
-        // ============================
+        HatRendererHelper.applyTransforms(entity, poseStack, partialTicks);
 
-        HatRendererHelper.applyTransforms(
-                entity,
-                poseStack,
-                partialTicks
-        );
-
-        // ============================
-        // Render hat item
-        // ============================
-
-        Minecraft.getInstance().getItemRenderer().renderStatic(
-                entity,
-                hat,
-                ItemDisplayContext.HEAD,
-                false,
-                poseStack,
-                buffer,
-                entity.level(),
-                light,
-                OverlayTexture.NO_OVERLAY,
-                0
-        );
+        Level level = entity.level();
+        ItemStackRenderState stackRenderState = new ItemStackRenderState();
+        Minecraft.getInstance()
+                .getItemModelResolver()
+                .updateForTopItem(stackRenderState, hat, ItemDisplayContext.HEAD, level, entity, entity.getId());
+        stackRenderState.submit(poseStack, nodeCollector, lightness, OverlayTexture.NO_OVERLAY, 0);
 
         poseStack.popPose();
     }
 
-    // ============================
-    // Heuristic animated head finder
-    // (works dev + production)
-    // ============================
-
     private ModelPart findHeadPart(Object model) {
-
-        // Try HeadedModel again (safety)
-        if (model instanceof HeadedModel headed) {
-            return headed.getHead();
+        if (model instanceof HumanoidModel<?> humanoid) {
+            return humanoid.head;
         }
 
         Class<?> search = model.getClass();
-
         while (search != null && search != Object.class) {
-
             for (Field field : search.getDeclaredFields()) {
-
                 try {
                     field.setAccessible(true);
                     Object value = field.get(model);
-
                     if (value instanceof ModelPart part) {
-
                         String name = field.getName().toLowerCase();
-
-                        // Almost all head bones contain "head"
-                        // obf ones start with f_
                         if (name.contains("head") || name.startsWith("f_")) {
                             return part;
                         }
                     }
-
                 } catch (Exception ignored) {}
             }
-
             search = search.getSuperclass();
         }
-
         return null;
     }
 }

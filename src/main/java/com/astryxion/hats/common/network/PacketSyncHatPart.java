@@ -1,15 +1,11 @@
 package com.astryxion.hats.common.network;
 
 import com.astryxion.hats.common.hat.HatPartCapability;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
 
 public class PacketSyncHatPart {
 
@@ -30,17 +26,13 @@ public class PacketSyncHatPart {
         return new PacketSyncHatPart(buf.readInt(), buf.readNbt());
     }
 
-    public static void handle(PacketSyncHatPart msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() ->
-                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                    var mc = net.minecraft.client.Minecraft.getInstance();
-                    if (mc.level == null) return;
-                    Entity entity = mc.level.getEntity(msg.playerId);
-                    if (entity instanceof Player player) {
-                        player.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
-                                part.deserializeNBT(msg.tag));
-                    }
-                }));
-        ctx.get().setPacketHandled(true);
+    public static void handle(PacketSyncHatPart msg) {
+        if (Minecraft.getInstance().level != null) {
+            Entity entity = Minecraft.getInstance().level.getEntity(msg.playerId);
+            if (entity instanceof Player player) {
+                var part = HatPartCapability.getOrCreate(player);
+                if (part != null) part.deserializeNBT(msg.tag, Minecraft.getInstance().level.registryAccess());
+            }
+        }
     }
 }

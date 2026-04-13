@@ -4,7 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.GlowSquid;
+import net.minecraft.world.entity.animal.squid.GlowSquid;
 
 /**
  * Handles hat positioning for glow squids

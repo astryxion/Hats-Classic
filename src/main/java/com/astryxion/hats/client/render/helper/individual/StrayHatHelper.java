@@ -3,8 +3,8 @@ package com.astryxion.hats.client.render.helper.individual;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Stray;
 
 /**
  * Handles hat positioning for strays
@@ -22,7 +22,7 @@ public class StrayHatHelper {
     ) {
 
         // Safety (should always be stray)
-        if (!(entity instanceof Stray))
+        if (entity.getType() != EntityType.STRAY)
             return;
 
         // ============================

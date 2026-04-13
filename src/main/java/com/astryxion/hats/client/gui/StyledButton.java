@@ -1,10 +1,13 @@
 package com.astryxion.hats.client.gui;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
+/**
+ * Flat custom button (1.20.1 reference). {@link HatScreen} uses vanilla {@link Button} for 1:1 parity with Forge 1.20.1.
+ */
 public class StyledButton extends Button {
 
     public StyledButton(int x, int y, int width, int height, Component message, OnPress onPress) {
@@ -12,7 +15,7 @@ public class StyledButton extends Button {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+    public void extractContents(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         int x = this.getX();
         int y = this.getY();
         int bg = this.isHovered() ? 0xFF9E9E9E : 0xFF7F7F7F;
@@ -31,13 +34,13 @@ public class StyledButton extends Button {
         gfx.enableScissor(x + 2, y + 2, x + this.width - 2, y + this.height - 2);
 
         if (textWidth <= innerW) {
-            gfx.drawCenteredString(font, this.getMessage(), x + this.width / 2, textY, 0xFFFFFF);
+            gfx.text(font, this.getMessage(), x + this.width / 2 - textWidth / 2, textY, 0xFFFFFF);
         } else {
             long t = System.currentTimeMillis() % 4000L;
             int maxOffset = textWidth - innerW;
             int offset = (int) (maxOffset * (double) t / 2000.0);
             if (t > 2000) offset = maxOffset - (int) (maxOffset * (double) (t - 2000) / 2000.0);
-            gfx.drawString(font, this.getMessage(), x + 4 - offset, textY, 0xFFFFFF);
+            gfx.text(font, this.getMessage(), x + 4 - offset, textY, 0xFFFFFF);
         }
 
         gfx.disableScissor();

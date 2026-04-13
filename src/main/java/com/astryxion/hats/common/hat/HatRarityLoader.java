@@ -3,7 +3,7 @@ package com.astryxion.hats.common.hat;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.astryxion.hats.Hats;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
@@ -16,7 +16,7 @@ public final class HatRarityLoader {
 
     public static void load() {
         try {
-            ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(
+            Identifier loc = Identifier.fromNamespaceAndPath(
                     Hats.MODID,
                     "rarity/hat_rarity.json"
             );
