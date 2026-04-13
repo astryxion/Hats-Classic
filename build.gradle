@@ -13,10 +13,14 @@ version = mod_version
 group = mod_group_id
 
 repositories {
+    // Optional Mo' Bends jar for IDE / compile checks (same idea as Forge 1.20.1 libs/)
+    flatDir {
+        dirs 'libs'
+    }
 }
 
 base {
-    archivesName = mod_id
+    archivesName = archive_base_name
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
@@ -61,6 +65,10 @@ configurations {
 }
 
 dependencies {
+    // Mo' Bends optional compat — hat code uses reflection only; jar is optional (rename built Mo' Bends jar to match).
+    if (file('libs/MoBends_1.21.1-4.0.4.jar').exists()) {
+        compileOnly name: 'MoBends_1.21.1-4.0.4'
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -73,6 +81,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
         mod_name                  : mod_name,
         mod_license               : mod_license,
         mod_version               : mod_version,
+        mod_authors               : mod_authors,
+        mod_description           : mod_description,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
