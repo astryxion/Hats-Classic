@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="astryxionshats"
+version="2.1.0"
+displayName="Astryxion's Hats"
+logoFile="logo.png"
+authors="Astryxion"
+description='''
+A modern spiritual successor to iChun’s Hats.
+Cosmetic hats for players and mobs with Cosmetic and Hunting unlock modes.
+Lightweight, dependency-free, and built for modern Minecraft.
+'''
+
+# ============================
+# Dependencies
+# ============================
+
+[[dependencies.astryxionshats]]
+modId="forge"
+mandatory=true
+versionRange="[47.1.3,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.astryxionshats]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
