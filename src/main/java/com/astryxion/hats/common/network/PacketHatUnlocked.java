@@ -1,7 +1,5 @@
 package com.astryxion.hats.common.network;
 
-import com.astryxion.hats.client.gui.toast.HatToast;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -15,6 +13,10 @@ public class PacketHatUnlocked {
         this.hatStack = hatStack.copy();
     }
 
+    public ItemStack getHatStack() {
+        return hatStack.copy();
+    }
+
     public static void encode(PacketHatUnlocked msg, FriendlyByteBuf buf, HolderLookup.Provider registryAccess) {
         buf.writeNbt(msg.hatStack.save(registryAccess));
     }
@@ -23,11 +25,5 @@ public class PacketHatUnlocked {
         CompoundTag tag = buf.readNbt();
         ItemStack stack = tag != null ? ItemStack.parseOptional(registryAccess, tag) : null;
         return new PacketHatUnlocked(stack != null ? stack : ItemStack.EMPTY);
-    }
-
-    public static void handle(PacketHatUnlocked msg) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-        mc.getToasts().addToast(new HatToast(msg.hatStack));
     }
 }

@@ -2,6 +2,8 @@ package com.astryxion.hats.client;
 
 import com.astryxion.hats.client.gui.HatScreen;
 import com.astryxion.hats.client.keybinds.HatKeybinds;
+import com.astryxion.hats.client.network.PacketHatUnlockedClient;
+import com.astryxion.hats.common.network.HatPacketHandler;
 import net.minecraft.client.Minecraft;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
@@ -12,6 +14,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 public class HatsClient {
 
     public static void registerClient(IEventBus modEventBus) {
+        HatPacketHandler.bindHatUnlockedClientHandler(PacketHatUnlockedClient::handle);
         modEventBus.addListener(RegisterKeyMappingsEvent.class, HatsClient::onRegisterKeyMappings);
         modEventBus.addListener(FMLClientSetupEvent.class, e -> NeoForge.EVENT_BUS.addListener(HatsClient::onClientTick));
     }

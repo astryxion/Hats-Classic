@@ -10,10 +10,19 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
+
+import java.util.function.Consumer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class HatPacketHandler {
+
+    /** Set from client entry only; avoids loading client classes on dedicated server. */
+    private static Consumer<PacketHatUnlocked> hatUnlockedClientHandler = msg -> {};
+
+    public static void bindHatUnlockedClientHandler(Consumer<PacketHatUnlocked> handler) {
+        hatUnlockedClientHandler = handler;
+    }
 
     public static final ResourceLocation CHANNEL_ID =
             ResourceLocation.fromNamespaceAndPath(Hats.MODID, "main");
@@ -94,7 +103,7 @@ public class HatPacketHandler {
                             if (level == null) return;
                             var registryAccess = level.registryAccess();
                             PacketHatUnlocked msg = PacketHatUnlocked.decode(copy, registryAccess);
-                            PacketHatUnlocked.handle(msg);
+                            hatUnlockedClientHandler.accept(msg);
                         }
                         case ID_SYNC_HAT_PART -> {
                             PacketSyncHatPart msg = PacketSyncHatPart.decode(copy);
