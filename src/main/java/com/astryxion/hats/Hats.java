@@ -2,6 +2,7 @@ package com.astryxion.hats;
 
 import com.astryxion.hats.common.capability.HatCloneHandler;
 import com.astryxion.hats.common.capability.HatLoginHandler;
+import com.astryxion.hats.common.hat.HatPartCapability;
 import com.astryxion.hats.common.events.HatWelcomeHandler;
 import com.astryxion.hats.common.hat.HatPartEvents;
 import com.astryxion.hats.common.hat.HatRarityLoader;
@@ -37,6 +38,7 @@ public class Hats {
         HatPacketHandler.register(modEventBus);
 
         NeoForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerStartTracking);
         NeoForge.EVENT_BUS.addListener(this::onLivingDeath);
         NeoForge.EVENT_BUS.addListener(this::onPlayerClone);
         NeoForge.EVENT_BUS.addListener(this::onPlayerRespawn);
@@ -55,6 +57,26 @@ public class Hats {
             HatPartEvents.onPlayerJoinLevel(player);
             HatLoginHandler.onPlayerLogin(player);
             HatWelcomeHandler.onPlayerJoin(player);
+        }
+    }
+
+    /**
+     * When a client first tracks another player (e.g. comes into range), apply that player's hat.
+     * Login-time sync can run before the remote entity exists on the client, so this covers late discovery.
+     */
+    private void onPlayerStartTracking(PlayerEvent.StartTracking event) {
+        if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer tracker)) {
+            return;
+        }
+        if (!(event.getTarget() instanceof net.minecraft.server.level.ServerPlayer tracked)) {
+            return;
+        }
+        var part = HatPartCapability.get(tracked);
+        if (part != null) {
+            HatPacketHandler.sendSyncHatPartToPlayer(
+                    tracker,
+                    tracked.getId(),
+                    part.serializeNBT(tracker.registryAccess()));
         }
     }
 

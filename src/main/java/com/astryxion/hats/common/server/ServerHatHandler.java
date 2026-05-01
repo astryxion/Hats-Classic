@@ -1,8 +1,9 @@
 package com.astryxion.hats.common.server;
 
-import com.astryxion.hats.common.hat.HatManager;
-import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.capability.HatDataCapability;
+import com.astryxion.hats.common.hat.HatManager;
+import com.astryxion.hats.common.hat.HatPartCapability;
+import com.astryxion.hats.common.network.HatPacketHandler;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -34,6 +35,14 @@ public final class ServerHatHandler {
                 );
             });
 
+            var clearedPart = HatPartCapability.get(player);
+            if (clearedPart != null) {
+                HatPacketHandler.sendSyncHatPartToTracking(
+                        player,
+                        player.getId(),
+                        clearedPart.serializeNBT(player.registryAccess()));
+            }
+
             return;
         }
 
@@ -56,5 +65,13 @@ public final class ServerHatHandler {
                     data.serializeNBT()
             );
         });
+
+        var equippedPart = HatPartCapability.get(player);
+        if (equippedPart != null) {
+            HatPacketHandler.sendSyncHatPartToTracking(
+                    player,
+                    player.getId(),
+                    equippedPart.serializeNBT(player.registryAccess()));
+        }
     }
 }

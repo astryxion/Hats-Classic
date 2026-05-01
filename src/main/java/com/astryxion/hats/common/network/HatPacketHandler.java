@@ -139,4 +139,22 @@ public class HatPacketHandler {
         PacketSyncHatPart.encode(new PacketSyncHatPart(entityId, tag), buf);
         sendToPlayer(player, ID_SYNC_HAT_PART, buf);
     }
+
+    /**
+     * Syncs one player's equipped hat part to every client that is tracking that player (including their own).
+     * Required for multiplayer: {@link #sendSyncHatPartToPlayer} alone only updates a single recipient.
+     */
+    public static void sendSyncHatPartToTracking(ServerPlayer trackedPlayer, int entityId, net.minecraft.nbt.CompoundTag tag) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            PacketSyncHatPart.encode(new PacketSyncHatPart(entityId, tag), buf);
+            byte[] arr = new byte[buf.readableBytes()];
+            buf.getBytes(buf.readerIndex(), arr);
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntityAndSelf(
+                    trackedPlayer,
+                    new HatsS2CPayload(ID_SYNC_HAT_PART, arr));
+        } finally {
+            buf.release();
+        }
+    }
 }
