@@ -1,0 +1,1 @@
+{"required":true,"minVersion":"0.8","package":"com.astryxion.hats.mixin","compatibilityLevel":"JAVA_21","mixins":["LivingEntityTickMixin"],"client":["EntityRendererMixin","LivingEntityRendererInvoker","LivingEntityRendererMixin"],"injectors":{"defaultRequire":1}}
