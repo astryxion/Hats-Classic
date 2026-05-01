@@ -6,10 +6,8 @@ license="${mod_license}"
 modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
-authors="Astryxion"
-description='''
-A modern spiritual successor to iChun's Hats. Cosmetic hats for players and mobs with Cosmetic and Hunting unlock modes. Lightweight, dependency-free, and built for modern Minecraft.
-'''
+authors="${mod_authors}"
+description='''${mod_description}'''
 
 [[mixins]]
 config="${mod_id}.mixins.json"

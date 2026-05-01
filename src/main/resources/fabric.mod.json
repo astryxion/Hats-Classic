@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "hats",
+	"version": "${version}",
+	"name": "Astryxion's Hats",
+	"description": "",
+	"authors": [],
+	"contact": {},
+	"license": "ARR",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.astryxion.hats.Hats"
+		],
+		"client": [
+			"com.astryxion.hats.client.HatsClient"
+		]
+	},
+	"mixins": [
+		"hats.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.0",
+		"minecraft": "${minecraft_version_range}",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

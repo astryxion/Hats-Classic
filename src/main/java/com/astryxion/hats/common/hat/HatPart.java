@@ -1,6 +1,11 @@
 package com.astryxion.hats.common.hat;
 
+import com.mojang.serialization.DataResult;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -32,23 +37,21 @@ public class HatPart {
         hat = ItemStack.EMPTY;
     }
 
-    // ============================================================
-    // THE FIX: Save/Load the FULL STACK to sync Server and Client
-    // ============================================================
-
-    public CompoundTag serializeNBT() {
+    public CompoundTag serializeNBT(HolderLookup.Provider provider) {
         CompoundTag tag = new CompoundTag();
         if (!hat.isEmpty()) {
-            // Saves the Item ID, Count, and ALL NBT data (colors, etc.)
-            tag.put("HatStack", hat.save(new CompoundTag()));
+            var ops = RegistryOps.create(NbtOps.INSTANCE, provider);
+            DataResult<Tag> encoded = ItemStack.CODEC.encodeStart(ops, hat);
+            tag.put("HatStack", encoded.getOrThrow());
         }
         return tag;
     }
 
-    public void deserializeNBT(CompoundTag tag) {
+    public void deserializeNBT(CompoundTag tag, HolderLookup.Provider provider) {
         if (tag.contains("HatStack")) {
-            // Reconstructs the exact ItemStack from the saved data
-            this.hat = ItemStack.of(tag.getCompound("HatStack"));
+            var ops = RegistryOps.create(NbtOps.INSTANCE, provider);
+            DataResult<ItemStack> decoded = ItemStack.CODEC.parse(ops, tag.get("HatStack"));
+            this.hat = decoded.result().orElse(ItemStack.EMPTY);
         } else {
             this.hat = ItemStack.EMPTY;
         }

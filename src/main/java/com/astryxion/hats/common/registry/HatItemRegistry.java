@@ -1,33 +1,37 @@
 package com.astryxion.hats.common.registry;
 
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.hat.HatItem;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.*;
-import java.util.*;
+import java.net.JarURLConnection;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * Core hat item registry
- *
- * - Auto registers all hats from models folder
- * - No creative tab logic
- * - Clean permanent system
+ * Core hat item registry (NeoForge)
+ * Auto registers all hats from models folder
  */
 public final class HatItemRegistry {
 
-    public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(ForgeRegistries.ITEMS, Hats.MODID);
-
-    /** All registered hats (registry objects) */
-    public static final List<RegistryObject<Item>> ALL_HATS = new ArrayList<>();
-
-    /** Names to skip (dev junk / parents / icons) */
     private static final Set<String> BLACKLIST = Set.of(
             "hatparent",
             "hatparent2",
@@ -35,100 +39,86 @@ public final class HatItemRegistry {
             "haticon"
     );
 
-    private HatItemRegistry() {}
-
-    // =============================
-    // Public register entry
-    // =============================
-
-    public static void register(IEventBus bus) {
-        autoRegisterHats();
-        ITEMS.register(bus);
-    }
-
-    // =============================
-    // Expose real Item list (FOR SPAWNING, RANDOMIZER, ETC)
-    // =============================
+    private static final List<Item> ALL_HATS_LIST = new ArrayList<>();
 
     public static List<Item> getAllHats() {
-
-        List<Item> hats = new ArrayList<>();
-
-        for (RegistryObject<Item> reg : ALL_HATS) {
-            hats.add(reg.get());
-        }
-
-        return hats;
+        return new ArrayList<>(ALL_HATS_LIST);
     }
 
-    // =============================
-    // Auto scan model files
-    // =============================
+    public static List<Item> getRawAllHatsList() {
+        return ALL_HATS_LIST;
+    }
+
+    private HatItemRegistry() {}
+
+    public static void register() {
+        autoRegisterHats();
+    }
+
+    private static final String ITEM_MODELS_PREFIX = "assets/" + Hats.MODID + "/models/item/";
+    /** Exists in resources so we can resolve the models/item folder in dev (file) and release (jar). */
+    private static final String MODELS_FOLDER_MARKER = ITEM_MODELS_PREFIX + "thumbnail.json";
 
     private static void autoRegisterHats() {
-
         try {
-
-            Path modelsPath = getResourcePath(
-                    "assets/" + Hats.MODID + "/models/item"
-            );
-
-            if (modelsPath == null || !Files.exists(modelsPath)) {
-                Hats.LOGGER.error("Hat models folder not found!");
+            URL marker = HatItemRegistry.class.getClassLoader().getResource(MODELS_FOLDER_MARKER);
+            if (marker == null) {
+                Hats.LOGGER.error("Hat models folder not found (missing resource {}).", MODELS_FOLDER_MARKER);
                 return;
             }
 
-            Files.list(modelsPath)
-                    .filter(p -> p.toString().endsWith(".json"))
-                    .forEach(path -> {
+            List<String> stems;
+            if ("jar".equalsIgnoreCase(marker.getProtocol())) {
+                JarURLConnection connection = (JarURLConnection) marker.openConnection();
+                try (JarFile jar = connection.getJarFile()) {
+                    stems = listJsonStemsFromJar(jar);
+                }
+            } else {
+                Path dir = Paths.get(marker.toURI()).getParent();
+                if (dir == null || !Files.isDirectory(dir)) {
+                    Hats.LOGGER.error("Hat models folder not found (bad path for {}).", MODELS_FOLDER_MARKER);
+                    return;
+                }
+                stems = listJsonStemsFromDir(dir);
+            }
 
-                        String name = path.getFileName()
-                                .toString()
-                                .replace(".json", "");
+            for (String name : stems) {
+                if (BLACKLIST.contains(name.toLowerCase(Locale.ROOT))) continue;
+                Identifier id = Identifier.fromNamespaceAndPath(Hats.MODID, name);
+                ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, id);
+                Item registered = Registry.register(
+                        BuiltInRegistries.ITEM,
+                        id,
+                        new HatItem(name, new Item.Properties().stacksTo(1).setId(itemKey)));
+                ALL_HATS_LIST.add(registered);
+            }
 
-                        if (BLACKLIST.contains(name)) {
-                            return;
-                        }
-
-                        RegistryObject<Item> item = ITEMS.register(
-                                name,
-                                () -> new Item(new Item.Properties())
-                        );
-
-                        ALL_HATS.add(item);
-                    });
-
-            Hats.LOGGER.info("Auto-registered {} hats", ALL_HATS.size());
-
+            Hats.LOGGER.info("Auto-registered {} hats", ALL_HATS_LIST.size());
         } catch (Exception e) {
             throw new RuntimeException("Failed to auto register hats", e);
         }
     }
 
-    // =============================
-    // Resource folder access
-    // =============================
+    private static List<String> listJsonStemsFromJar(JarFile jar) {
+        List<String> out = new ArrayList<>();
+        Enumeration<JarEntry> entries = jar.entries();
+        while (entries.hasMoreElements()) {
+            String name = entries.nextElement().getName();
+            if (!name.startsWith(ITEM_MODELS_PREFIX) || !name.endsWith(".json")) continue;
+            String stem = name.substring(ITEM_MODELS_PREFIX.length(), name.length() - ".json".length());
+            if (!stem.isEmpty()) out.add(stem);
+        }
+        Collections.sort(out);
+        return out;
+    }
 
-    private static Path getResourcePath(String path)
-            throws IOException, URISyntaxException {
-
-        var url = HatItemRegistry.class
-                .getClassLoader()
-                .getResource(path);
-
-        if (url == null) return null;
-
-        if (url.getProtocol().equals("jar")) {
-
-            FileSystem fs = FileSystems.newFileSystem(
-                    url.toURI(),
-                    Collections.emptyMap()
-            );
-
-            return fs.getPath(path);
-
-        } else {
-            return Paths.get(url.toURI());
+    private static List<String> listJsonStemsFromDir(Path dir) throws IOException {
+        try (Stream<Path> stream = Files.list(dir)) {
+            return stream
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
+                    .map(p -> p.getFileName().toString().replace(".json", ""))
+                    .sorted()
+                    .collect(Collectors.toList());
         }
     }
 }

@@ -1,153 +1,145 @@
 package com.astryxion.hats.common.network;
 
 import com.astryxion.hats.Hats;
-import com.astryxion.hats.common.hat.HatPartCapability;
-import net.minecraft.resources.ResourceLocation;
+import com.mojang.serialization.DataResult;
+import io.netty.buffer.Unpooled;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
-
-import java.util.function.Supplier;
+import net.minecraft.world.item.ItemStack;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 
 public class HatPacketHandler {
 
-    private static final String CLIENT_HAT_HANDLERS = "com.astryxion.hats.client.network.HatClientPacketHandlers";
+    public static final Identifier CHANNEL_ID =
+            Identifier.fromNamespaceAndPath(Hats.MODID, "main");
+    private static final Identifier CHANNEL_ID_C2S = Identifier.fromNamespaceAndPath(Hats.MODID, "main_c2s");
+    private static final Identifier CHANNEL_ID_S2C = Identifier.fromNamespaceAndPath(Hats.MODID, "main_s2c");
 
-    private static final String PROTOCOL = "1";
-    private static int id = 0;
+    private static final byte ID_EQUIP = 0;
+    private static final byte ID_OPEN_COSMETIC = 1;
+    private static final byte ID_OPEN_HUNTING = 2;
+    private static final byte ID_SYNC_HAT = 3;
+    private static final byte ID_HAT_UNLOCKED = 4;
+    private static final byte ID_SYNC_HAT_PART = 5;
 
-    public static final SimpleChannel CHANNEL =
-            NetworkRegistry.newSimpleChannel(
-                    new ResourceLocation(Hats.MODID, "main"),
-                    () -> PROTOCOL,
-                    PROTOCOL::equals,
-                    PROTOCOL::equals
-            );
+    public record HatsC2SPayload(byte typeId, byte[] payload) implements CustomPacketPayload {
+        public static final CustomPacketPayload.Type<HatsC2SPayload> TYPE = new CustomPacketPayload.Type<>(CHANNEL_ID_C2S);
+        public static final StreamCodec<FriendlyByteBuf, HatsC2SPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BYTE, HatsC2SPayload::typeId,
+                ByteBufCodecs.byteArray(32767), HatsC2SPayload::payload,
+                HatsC2SPayload::new);
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
+
+    public record HatsS2CPayload(byte typeId, byte[] payload) implements CustomPacketPayload {
+        public static final CustomPacketPayload.Type<HatsS2CPayload> TYPE = new CustomPacketPayload.Type<>(CHANNEL_ID_S2C);
+        public static final StreamCodec<FriendlyByteBuf, HatsS2CPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BYTE, HatsS2CPayload::typeId,
+                ByteBufCodecs.byteArray(32767), HatsS2CPayload::payload,
+                HatsS2CPayload::new);
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+    }
 
     public static void register() {
+        PayloadTypeRegistry.serverboundPlay().register(HatsC2SPayload.TYPE, HatsC2SPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(HatsS2CPayload.TYPE, HatsS2CPayload.CODEC);
 
-        // =====================
-        // CLIENT -> SERVER
-        // =====================
-
-        // Handles equipping hats
-        CHANNEL.registerMessage(
-                id++,
-                PacketEquipHat.class,
-                PacketEquipHat::encode,
-                PacketEquipHat::decode,
-                PacketEquipHat::handle
-        );
-
-        // 🔧 NEW: Handles granting "The Config Demon" (Cosmetic Mode)
-        CHANNEL.registerMessage(
-                id++,
-                PacketOpenCosmeticMenu.class,
-                PacketOpenCosmeticMenu::toBytes,
-                PacketOpenCosmeticMenu::new,
-                PacketOpenCosmeticMenu::handle
-        );
-
-        // 🔧 NEW: Handles granting "Let The Hunt Begin!" (Hunting Mode)
-        CHANNEL.registerMessage(
-                id++,
-                PacketOpenHuntingMenu.class,
-                PacketOpenHuntingMenu::toBytes,
-                PacketOpenHuntingMenu::new,
-                PacketOpenHuntingMenu::handle
-        );
-
-        // =====================
-        // SERVER -> CLIENT
-        // =====================
-
-        // Syncs equipped hat state to the client
-        CHANNEL.registerMessage(
-                id++,
-                PacketSyncHat.class,
-                PacketSyncHat::encode,
-                PacketSyncHat::decode,
-                PacketSyncHat::handle
-        );
-
-        CHANNEL.registerMessage(
-                id++,
-                PacketHatUnlocked.class,
-                PacketHatUnlocked::encode,
-                PacketHatUnlocked::decode,
-                HatPacketHandler::handleHatUnlocked
-        );
-
-        // Syncs the actual hat model part for rendering
-        CHANNEL.registerMessage(
-                id++,
-                PacketSyncHatPart.class,
-                PacketSyncHatPart::encode,
-                PacketSyncHatPart::decode,
-                PacketSyncHatPart::handle
-        );
-    }
-
-    /**
-     * Invoked only on the physical client when the S2C packet is received; uses reflection so this class has no
-     * compile-time dependency on client types (dedicated server must not load Toast / Minecraft.gui).
-     */
-    private static void handleHatUnlocked(PacketHatUnlocked msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> {
-            if (FMLEnvironment.dist != Dist.CLIENT) {
-                return;
-            }
+        ServerPlayNetworking.registerGlobalReceiver(HatsC2SPayload.TYPE, (payload, context) -> {
+            if (!(context.player() instanceof ServerPlayer serverPlayer)) return;
+            FriendlyByteBuf copy = new FriendlyByteBuf(Unpooled.wrappedBuffer(payload.payload()));
             try {
-                Class.forName(CLIENT_HAT_HANDLERS)
-                        .getMethod("handleHatUnlocked", PacketHatUnlocked.class)
-                        .invoke(null, msg);
-            } catch (Throwable t) {
-                Hats.LOGGER.error("Failed to handle hat unlocked packet on client", t);
+                switch (payload.typeId()) {
+                    case ID_EQUIP -> {
+                        PacketEquipHat msg = PacketEquipHat.decode(copy);
+                        PacketEquipHat.handle(msg, serverPlayer);
+                    }
+                    case ID_OPEN_COSMETIC -> {
+                        PacketOpenCosmeticMenu msg = new PacketOpenCosmeticMenu();
+                        PacketOpenCosmeticMenu.handle(msg, serverPlayer);
+                    }
+                    case ID_OPEN_HUNTING -> {
+                        PacketOpenHuntingMenu msg = new PacketOpenHuntingMenu();
+                        PacketOpenHuntingMenu.handle(msg, serverPlayer);
+                    }
+                    default -> {}
+                }
+            } finally {
+                copy.release();
             }
         });
-        context.setPacketHandled(true);
     }
 
-    // =====================
-    // Helper
-    // =====================
+    public static void sendToPlayer(ServerPlayer player, byte packetId, FriendlyByteBuf buf) {
+        byte[] arr = new byte[buf.readableBytes()];
+        buf.getBytes(buf.readerIndex(), arr);
+        sendToPlayer(player, packetId, arr);
+    }
 
-    public static void sendToPlayer(ServerPlayer player, Object msg) {
-        CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                msg
-        );
+    public static void sendToPlayer(ServerPlayer player, byte packetId, byte[] payload) {
+        ServerPlayNetworking.send(player, new HatsS2CPayload(packetId, payload));
+    }
+
+    public static void sendSyncHatToPlayer(ServerPlayer player, net.minecraft.nbt.CompoundTag data) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        PacketSyncHat.encode(new PacketSyncHat(data), buf);
+        sendToPlayer(player, ID_SYNC_HAT, buf);
+    }
+
+    public static void sendHatUnlockedToPlayer(ServerPlayer player, ItemStack hatStack) {
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), player.registryAccess());
+        var ops = RegistryOps.create(NbtOps.INSTANCE, player.registryAccess());
+        DataResult<Tag> encoded = ItemStack.CODEC.encodeStart(ops, hatStack);
+        buf.writeNbt((CompoundTag) encoded.getOrThrow());
+        byte[] arr = new byte[buf.readableBytes()];
+        buf.getBytes(buf.readerIndex(), arr);
+        buf.release();
+        sendToPlayer(player, ID_HAT_UNLOCKED, arr);
+    }
+
+    public static void sendSyncHatPartToPlayer(ServerPlayer player, int entityId, net.minecraft.nbt.CompoundTag tag) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        buf.writeInt(entityId);
+        buf.writeNbt(tag);
+        sendToPlayer(player, ID_SYNC_HAT_PART, buf);
     }
 
     /**
-     * Syncs this player's equipped hat (render capability) to every client that can see them, including their own.
-     * Required for multiplayer so other players see the correct hat model.
+     * Syncs one player's equipped hat part to every client that is tracking that player (including their own).
+     * Required for multiplayer: {@link #sendSyncHatPartToPlayer} alone only updates a single recipient.
      */
-    public static void syncPlayerHatPartToTracking(ServerPlayer player) {
-        if (player == null || player.level().isClientSide()) {
-            return;
+    public static void sendSyncHatPartToTracking(ServerPlayer trackedPlayer, int entityId, net.minecraft.nbt.CompoundTag tag) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            buf.writeInt(entityId);
+            buf.writeNbt(tag);
+            byte[] arr = new byte[buf.readableBytes()];
+            buf.getBytes(buf.readerIndex(), arr);
+            HatsS2CPayload payload = new HatsS2CPayload(ID_SYNC_HAT_PART, arr);
+            boolean selfSent = false;
+            for (ServerPlayer viewer : PlayerLookup.tracking(trackedPlayer)) {
+                ServerPlayNetworking.send(viewer, payload);
+                if (viewer == trackedPlayer) {
+                    selfSent = true;
+                }
+            }
+            if (!selfSent) {
+                ServerPlayNetworking.send(trackedPlayer, payload);
+            }
+        } finally {
+            buf.release();
         }
-        player.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
-                CHANNEL.send(
-                        PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
-                        new PacketSyncHatPart(player.getId(), part.serializeNBT())
-                ));
-    }
-
-    /**
-     * Sends one player's hat state to a single observer (e.g. when they start tracking that player).
-     */
-    public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {
-        if (observer == null || hatOwner == null || observer.level().isClientSide()) {
-            return;
-        }
-        hatOwner.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
-                sendToPlayer(observer, new PacketSyncHatPart(hatOwner.getId(), part.serializeNBT())));
     }
 }

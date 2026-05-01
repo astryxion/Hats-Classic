@@ -1,139 +1,138 @@
+import groovy.json.JsonOutput
+
 plugins {
-    id 'eclipse'
-    id 'idea'
-    id 'maven-publish'
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'maven-publish'
 }
 
-version = mod_version
-group = mod_group_id
+version = project.mod_version
+group = project.maven_group
 
 base {
-    archivesName = mod_id
+	archivesName = project.archives_base_name
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+def hatModId = "hats"
+def hatItemModelsDir = file("src/main/resources/assets/${hatModId}/models/item")
+def generatedHatItemsRoot = layout.buildDirectory.dir("generated/resources/hatItemDefinitions")
 
-println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+sourceSets.main.resources.srcDir(generatedHatItemsRoot)
 
-minecraft {
+// Minecraft 26.1: assets/<namespace>/items/<id>.json is required so ITEM_MODEL resolves (models/item alone is not enough).
+tasks.register('generateHatItemDefinitions') {
+	inputs.dir(hatItemModelsDir).withPropertyName("hatItemModels")
+	outputs.dir(layout.buildDirectory.dir("generated/resources/hatItemDefinitions/assets/${hatModId}/items"))
 
-    mappings channel: mapping_channel, version: mapping_version
-
-    copyIdeResources = true
-
-    runs {
-        configureEach {
-            workingDirectory project.file('run')
-
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
-        }
-
-        client {
-            property 'forge.enabledGameTestNamespaces', mod_id
-        }
-
-        server {
-            property 'forge.enabledGameTestNamespaces', mod_id
-            args '--nogui'
-        }
-
-        gameTestServer {
-            property 'forge.enabledGameTestNamespaces', mod_id
-        }
-
-        data {
-            workingDirectory project.file('run-data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-        }
-    }
+	doLast {
+		def outItems = file("${layout.buildDirectory.get()}/generated/resources/hatItemDefinitions/assets/${hatModId}/items")
+		outItems.mkdirs()
+		def blacklist = ["hatparent", "hatparent2", "simplehats_icon", "haticon"] as Set
+		hatItemModelsDir.eachFile { f ->
+			if (!f.name.endsWith(".json")) {
+				return
+			}
+			def stem = f.name.substring(0, f.name.length() - 5)
+			if (blacklist.contains(stem.toLowerCase(java.util.Locale.ROOT))) {
+				return
+			}
+			def payload = [
+				model: [
+					type  : "minecraft:model",
+					model : "${hatModId}:item/${stem}"
+				]
+			]
+			new File(outItems, "${stem}.json").text = JsonOutput.prettyPrint(JsonOutput.toJson(payload))
+		}
+	}
 }
 
-// Standard Forge layout: everything under src/main/resources/ lands at jar root (META-INF/mods.toml, assets/, data/, mixins).
-// Do not point only at src/main/resources/resources — that folder is empty here and produced jars with no mods.toml (mod invisible in-game / on CurseForge).
-sourceSets {
-    main {
-        resources {
-            srcDirs = ['src/main/resources', 'src/generated/resources']
-        }
-    }
+processResources.dependsOn('generateHatItemDefinitions')
+
+afterEvaluate {
+	tasks.named('sourcesJar').configure {
+		dependsOn('generateHatItemDefinitions')
+	}
 }
 
 repositories {
+	// Add repositories to retrieve artifacts from in here.
+	// You should only use this when depending on other mods because
+	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
+	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
+	// for more information about repositories.
+}
 
-    // Enable local ./libs folder for soft-compat jars
-    flatDir {
-        dir 'libs'
-    }
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"hats" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+
 }
 
 dependencies {
+	// To change the versions see the gradle.properties file.
+	// Loom needs an exact minecraft_version; fabric.mod.json uses minecraft_version_range for depends.minecraft.
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-
-    // ============================
-    // MO' BENDS OPTIONAL COMPAT
-    // ============================
-
-    if (file('libs/MoBends_1.20.1-3.0.4.jar').exists()) {
-        compileOnly name: "MoBends_1.20.1-3.0.4"
-    }
+	// Fabric API. This is technically optional, but you probably want it anyway.
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	
 }
 
-tasks.named('processResources', ProcessResources).configure {
+processResources {
+	def version = project.version
+	def minecraftVersionRange = project.minecraft_version_range
+	inputs.property "version", version
+	inputs.property "minecraft_version_range", minecraftVersionRange
 
-    var replaceProperties = [
-            minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
-            forge_version: forge_version, forge_version_range: forge_version_range,
-            loader_version_range: loader_version_range,
-            mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
-            mod_authors: mod_authors, mod_description: mod_description,
-    ]
-
-    inputs.properties replaceProperties
-
-    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties + [project: project]
-    }
-}
-
-tasks.named('jar', Jar).configure {
-
-    manifest {
-        attributes([
-                'Specification-Title'     : mod_id,
-                'Specification-Vendor'    : mod_authors,
-                'Specification-Version'   : '1',
-                'Implementation-Title'    : project.name,
-                'Implementation-Version'  : project.jar.archiveVersion,
-                'Implementation-Vendor'   : mod_authors,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
-        ])
-    }
-
-    finalizedBy 'reobfJar'
-}
-
-publishing {
-    publications {
-        register('mavenJava', MavenPublication) {
-            artifact jar
-        }
-    }
-    repositories {
-        maven {
-            url "file://${project.projectDir}/mcmodsrepo"
-        }
-    }
+	filesMatching("fabric.mod.json") {
+		expand "version": version, "minecraft_version_range": minecraftVersionRange
+	}
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
+	it.options.release = 25
+}
+
+java {
+	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+	// if it is present.
+	// If you remove this line, sources will not be generated.
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName"}
+	}
+}
+
+// configure the maven publication
+publishing {
+	publications {
+		create("mavenJava", MavenPublication) {
+			from components.java
+		}
+	}
+
+	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+	repositories {
+		// Add repositories to publish to here.
+		// Notice: This block does NOT have the same function as the block in the top level.
+		// The repositories here will be used for publishing your artifact, not for
+		// retrieving dependencies.
+	}
 }
