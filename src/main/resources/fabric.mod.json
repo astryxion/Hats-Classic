@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "astryxionshats",
+  "id": "hats",
   "version": "1.0.0",
   "name": "Hats Classic Edition",
   "description": "A modern spiritual successor to iChun's Hats. Cosmetic hats for players and mobs with Cosmetic and Hunting unlock modes. Lightweight, dependency-free, and built for modern Minecraft.",
@@ -10,14 +10,14 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.astryxion.astryxionshats.AstryxionsHats"
+      "com.astryxion.hats.AstryxionsHats"
     ],
     "client": [
-      "com.astryxion.astryxionshats.client.AstryxionsHatsClient"
+      "com.astryxion.hats.client.AstryxionsHatsClient"
     ]
   },
   "mixins": [
-    "astryxionshats.mixins.json"
+    "hats.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.15.0",

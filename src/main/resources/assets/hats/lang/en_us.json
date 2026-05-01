@@ -1,0 +1,551 @@
+{
+  "item.hats.acornhat": "Acorn Hat",
+  "item.hats.aegishat": "Aegis Hat",
+  "item.hats.alienphil": "Alien Phil",
+  "item.hats.alien_antennae": "Alien Antennae",
+  "item.hats.amalgalichhat": "Amalgalich Hat",
+  "item.hats.angel_and_devil": "Angel and Devil",
+  "item.hats.angrymask": "Angry Mask",
+  "item.hats.antlers": "Antlers",
+  "item.hats.apple": "Apple",
+  "item.hats.artsy": "Artsy",
+  "item.hats.artsy_doll": "Artsy Doll",
+  "item.hats.astronaut": "Astronaut",
+  "item.hats.axolotl_on_head": "Axolotl on Head",
+  "item.hats.azumanga_hat": "Azumanga Hat",
+
+  "item.hats.babydolphin": "Baby Dolphin",
+  "item.hats.babyturtle": "Baby Turtle",
+  "item.hats.baby_crewmate": "Baby Crewmate",
+
+  "item.hats.bandana": "Bandana",
+  "item.hats.bandanargb": "Bandana RGB",
+
+  "item.hats.baseballeaster": "Baseball Hat Easter",
+  "item.hats.baseballhat": "Baseball Hat",
+  "item.hats.baseballhatfestive": "Baseball Hat Festive",
+  "item.hats.baseballhatjuly": "Baseball Hat July",
+  "item.hats.baseballhatrgb": "Baseball Hat RGB",
+
+  "item.hats.batwinghat": "Bat Wing Hat",
+  "item.hats.beanie": "Beanie",
+  "item.hats.beanieeaster": "Beanie Easter",
+  "item.hats.beaniefestive": "Beanie Festive",
+  "item.hats.beaniejuly": "Beanie July",
+  "item.hats.beaniergb": "Beanie RGB",
+  "item.hats.beaniespooky": "Beanie Spooky",
+
+  "item.hats.beehat": "Bee Hat",
+  "item.hats.beehatpride": "Bee Hat Pride",
+  "item.hats.beehattrans": "Bee Hat Trans",
+
+  "item.hats.beetle_on_head": "Beetle on Head",
+  "item.hats.bee_on_head": "Bee on Head",
+
+  "item.hats.beret_ribbon": "Beret with Ribbon",
+  "item.hats.bicorne": "Bicorne Hat",
+
+  "item.hats.bigbrain": "Big Brain",
+  "item.hats.bigcrown": "Big Crown",
+  "item.hats.bigeyes": "Big Eyes",
+  "item.hats.bigribbon": "Big Ribbon",
+  "item.hats.bigstevehead": "Big Steve Head",
+
+  "item.hats.binky": "Binky",
+  "item.hats.bluefireeye": "Blue Fire Eye",
+  "item.hats.bowler": "Bowler Hat",
+
+  "item.hats.breadhat": "Bread Hat",
+  "item.hats.brownbrick": "Brown Brick",
+  "item.hats.bucket": "Bucket",
+
+  "item.hats.bunnyhat": "Bunny Hat",
+  "item.hats.burgerhat": "Burger Hat",
+
+  "item.hats.burning_m_bison": "Burning M Bison",
+
+  "item.hats.caddycap": "Caddy Cap",
+  "item.hats.camera": "Camera",
+  "item.hats.camerabeard": "Camera Beard",
+
+  "item.hats.candleonhead": "Candle on Head",
+  "item.hats.candycane": "Candy Cane",
+
+  "item.hats.capbackwards": "Cap Backwards",
+
+  "item.hats.cardboard_box": "Cardboard Box",
+
+  "item.hats.carrotonstick": "Carrot on Stick",
+
+  "item.hats.cartoonegg": "Cartoon Egg",
+
+  "item.hats.caterpillar_on_head": "Caterpillar on Head",
+
+  "item.hats.cat_hat": "Cat Hat",
+  "item.hats.cat_on_head": "Cat on Head",
+
+  "item.hats.chalk_stick": "Chalk Stick",
+  "item.hats.cheeseslice": "Cheese Slice",
+
+  "item.hats.chefshat": "Chef's Hat",
+
+  "item.hats.chickenhead": "Chicken Head",
+  "item.hats.chickenonhead": "Chicken on Head",
+
+  "item.hats.chi_ears": "Chi Ears",
+
+  "item.hats.chocolate_sauced": "Chocolate Sauced",
+
+  "item.hats.christmascakehat": "Christmas Cake Hat",
+  "item.hats.christmastree": "Christmas Tree",
+
+  "item.hats.circular_glasses": "Circular Glasses",
+  "item.hats.clockface": "Clock Face",
+
+  "item.hats.cowboy": "Cowboy Hat",
+  "item.hats.cowboyrgb": "Cowboy Hat RGB",
+
+  "item.hats.crabonhead": "Crab on Head",
+
+  "item.hats.crown": "Crown",
+  "item.hats.crystal_horns": "Crystal Horns",
+
+  "item.hats.cucumbereyemask": "Cucumber Eye Mask",
+
+  "item.hats.cuphead": "Cuphead",
+
+  "item.hats.cyclopseye": "Cyclops Eye",
+
+  "item.hats.dairyqueen": "Dairy Queen",
+
+  "item.hats.dangereqsue": "Dangeresque",
+  "item.hats.dangeresquejuly": "Dangeresque July",
+
+  "item.hats.dejiko": "Dejiko",
+
+  "item.hats.demoneyes": "Demon Eyes",
+  "item.hats.demonhorns": "Demon Horns",
+
+  "item.hats.digger": "Digger Hat",
+  "item.hats.dimmahat": "Dimma Hat",
+  "item.hats.dipper": "Dipper",
+
+  "item.hats.discoball": "Disco Ball",
+
+  "item.hats.disguise": "Disguise",
+
+  "item.hats.doctorhat": "Doctor Hat",
+
+  "item.hats.dorkglassesandteeth": "Dork Glasses and Teeth",
+
+  "item.hats.doubletake": "Double Take",
+
+  "item.hats.dragonhead": "Dragon Head",
+  "item.hats.dragonskull": "Dragon Skull",
+  "item.hats.dragonskullender": "Ender Dragon Skull",
+
+  "item.hats.drinkinhat": "Drinking Hat",
+
+  "item.hats.druid_antlers": "Druid Antlers",
+  "item.hats.druid_antlers_rare": "Rare Druid Antlers",
+
+  "item.hats.dumhat": "Dum Hat",
+
+  "item.hats.dwarfbeard": "Dwarf Beard",
+  "item.hats.dwarfminerbeard": "Dwarf Miner Beard",
+
+  "item.hats.easterhead": "Easter Head",
+
+  "item.hats.eevee_ears": "Eevee Ears",
+
+  "item.hats.eggcracked": "Cracked Egg",
+  "item.hats.egghead": "Egg Head",
+  "item.hats.eggheadspots": "Egg Head Spots",
+  "item.hats.eggonhead": "Egg on Head",
+
+  "item.hats.elfhat": "Elf Hat",
+  "item.hats.explorerhat": "Explorer Hat",
+
+  "item.hats.eyeholder_beeholder": "Eyeholder Beholder",
+  "item.hats.eyeholder_dark": "Eyeholder Dark",
+  "item.hats.eyeholder_evil": "Eyeholder Evil",
+  "item.hats.eyeholder_warm": "Eyeholder Warm",
+  "item.hats.eyeholder_xanath": "Eyeholder Xanath",
+
+  "item.hats.eyepatch": "Eye Patch",
+
+  "item.hats.fakeblight": "Fake Blight",
+  "item.hats.fakefire": "Fake Fire",
+
+  "item.hats.farmerbrim": "Farmer Brim Hat",
+
+  "item.hats.festiveantlers": "Festive Antlers",
+  "item.hats.festiveribbon": "Festive Ribbon",
+
+  "item.hats.fez": "Fez",
+  "item.hats.finnhood": "Finn Hood",
+
+  "item.hats.fireworks": "Fireworks Hat",
+
+  "item.hats.fishing_hat": "Fishing Hat",
+
+  "item.hats.fishonhead": "Fish on Head",
+
+  "item.hats.flagjuly": "July Flag",
+
+  "item.hats.flies": "Flies",
+
+  "item.hats.floatinghearts": "Floating Hearts",
+  "item.hats.floatingstar": "Floating Star",
+
+  "item.hats.flowercrown": "Flower Crown",
+  "item.hats.floweronhead": "Flower on Head",
+
+  "item.hats.foxhat": "Fox Hat",
+
+  "item.hats.fro": "Fro",
+
+  "item.hats.fronthorns": "Front Horns",
+
+  "item.hats.frozenhead": "Frozen Head",
+
+  "item.hats.fulldiamondhelm": "Full Diamond Helm",
+  "item.hats.fullgoldhelm": "Full Gold Helm",
+  "item.hats.fullironhelm": "Full Iron Helm",
+  "item.hats.fullsteelhelm": "Full Steel Helm",
+
+  "item.hats.ghostmask": "Ghost Mask",
+
+  "item.hats.gnome": "Gnome",
+
+  "item.hats.gnome_clover_wig": "Gnome Clover Wig",
+  "item.hats.gnome_clover_wig_glasses": "Gnome Clover Wig with Glasses",
+
+  "item.hats.goggles": "Goggles",
+
+  "item.hats.grandmadisguise": "Grandma Disguise",
+
+  "item.hats.greaser": "Greaser",
+
+  "item.hats.greenbirb": "Green Birb",
+  "item.hats.greenstache": "Green Stache",
+
+  "item.hats.greyfoxhat": "Grey Fox Hat",
+
+  "item.hats.grinchhat": "Grinch Hat",
+
+  "item.hats.halo": "Halo",
+
+  "item.hats.hat_of_discipline": "Hat of Discipline",
+
+  "item.hats.headbolts": "Head Bolts",
+
+  "item.hats.headphonesblue": "Blue Headphones",
+  "item.hats.headphonespink": "Pink Headphones",
+  "item.hats.headphonesred": "Red Headphones",
+  "item.hats.headphonesreggae": "Reggae Headphones",
+
+  "item.hats.headshot": "Head Shot",
+
+  "item.hats.hockeymask": "Hockey Mask",
+
+  "item.hats.holyhead": "Holy Head",
+
+  "item.hats.horsemask": "Horse Mask",
+
+  "item.hats.hosthat": "Host Hat",
+
+  "item.hats.icedragonskull": "Ice Dragon Skull",
+
+  "item.hats.jackohat": "Jack O' Hat",
+
+  "item.hats.jesterhat": "Jester Hat",
+
+  "item.hats.julydouble": "July Double",
+
+  "item.hats.julysunglasses": "July Sunglasses",
+
+  "item.hats.julytophat": "July Top Hat",
+
+  "item.hats.kirbymouthful": "Kirby Mouthful",
+
+  "item.hats.ladybug_on_head": "Ladybug on Head",
+
+  "item.hats.largehorns": "Large Horns",
+
+  "item.hats.lightning_eyes": "Lightning Eyes",
+
+  "item.hats.lilbow": "Little Bow",
+
+  "item.hats.lil_bows": "Little Bows",
+
+  "item.hats.lil_termagant": "Lil Termagant",
+
+  "item.hats.longfoxears": "Long Fox Ears",
+
+  "item.hats.madscientist": "Mad Scientist",
+
+  "item.hats.magikarp": "Magikarp",
+
+  "item.hats.medusa": "Medusa",
+
+  "item.hats.megamanhat": "Megaman Hat",
+
+  "item.hats.milady_doll": "Milady Doll",
+
+  "item.hats.mimic_head": "Mimic Head",
+  "item.hats.mimic_head_dark": "Dark Mimic Head",
+  "item.hats.mimic_head_gold": "Gold Mimic Head",
+
+  "item.hats.mindflayer": "Mind Flayer",
+  "item.hats.mindflayer_alhoon": "Mind Flayer Alhoon",
+
+  "item.hats.minerhat": "Miner Hat",
+
+  "item.hats.mistletoe": "Mistletoe",
+
+  "item.hats.mohawk": "Mohawk",
+
+  "item.hats.monkeyking": "Monkey King",
+
+  "item.hats.monocle": "Monocle",
+
+  "item.hats.moreeyes": "More Eyes",
+
+  "item.hats.murdered": "Murdered",
+
+  "item.hats.nekoears": "Neko Ears",
+
+  "item.hats.nyan_doll": "Nyan Doll",
+
+  "item.hats.octodad": "Octodad",
+
+  "item.hats.orange_hat": "Orange Hat",
+
+  "item.hats.palmtree": "Palm Tree",
+
+  "item.hats.paperbag": "Paper Bag",
+
+  "item.hats.partyhat": "Party Hat",
+
+  "item.hats.paypay": "PayPay",
+
+  "item.hats.peepo": "Peepo",
+
+  "item.hats.penguinbaby": "Penguin Baby",
+  "item.hats.penguinhat": "Penguin Hat",
+
+  "item.hats.peppino": "Peppino",
+
+  "item.hats.pighead": "Pig Head",
+
+  "item.hats.pika_ears": "Pika Ears",
+
+  "item.hats.pinhead": "Pin Head",
+
+  "item.hats.plaguedoctor": "Plague Doctor",
+
+  "item.hats.pog": "Pog",
+
+  "item.hats.pohatoe": "Pohatoe",
+
+  "item.hats.policebucket": "Police Bucket",
+  "item.hats.policesiren": "Police Siren",
+
+  "item.hats.pom_moog": "Pom Moog",
+
+  "item.hats.poofballhat": "Poofball Hat",
+  "item.hats.poofballrgb": "Poofball RGB",
+
+  "item.hats.popehat": "Pope Hat",
+
+  "item.hats.potionhead": "Potion Head",
+
+  "item.hats.presentsstack": "Present Stack",
+
+  "item.hats.propelhat": "Propeller Hat",
+
+  "item.hats.puchiko": "Puchiko",
+
+  "item.hats.questbook": "Quest Book",
+
+  "item.hats.rabbitears": "Rabbit Ears",
+  "item.hats.rabbitonhead": "Rabbit on Head",
+
+  "item.hats.rabi_en_rose": "Rabi en Rose",
+  "item.hats.rabi_en_rose_wig": "Rabi en Rose Wig",
+
+  "item.hats.rainboworbiters": "Rainbow Orbiters",
+
+  "item.hats.raincloud": "Rain Cloud",
+
+  "item.hats.ranahat": "Rana Hat",
+
+  "item.hats.redeyes": "Red Eyes",
+  "item.hats.rednose": "Red Nose",
+  "item.hats.redshroomcap": "Red Shroom Cap",
+  "item.hats.redstache": "Red Stache",
+
+  "item.hats.rgbbigribbon": "RGB Big Ribbon",
+  "item.hats.rgbbowler": "RGB Bowler",
+  "item.hats.rgbdragonskull": "RGB Dragon Skull",
+  "item.hats.rgbdrinkinhat": "RGB Drinking Hat",
+  "item.hats.rgbeasterhead": "RGB Easter Head",
+  "item.hats.rgbfullhelm": "RGB Full Helm",
+  "item.hats.rgbpartyhat": "RGB Party Hat",
+  "item.hats.rgbsmallbowler": "RGB Small Bowler",
+  "item.hats.rgbsunglasses": "RGB Sunglasses",
+  "item.hats.rgbtoptophathat": "RGB Top Top Hat",
+  "item.hats.rgbushanka": "RGB Ushanka",
+
+  "item.hats.right_hand_hat": "Right Hand Hat",
+  "item.hats.right_hand_hat_cyborg": "Right Hand Hat Cyborg",
+
+  "item.hats.rimglasses": "Rim Glasses",
+
+  "item.hats.rock": "Rock",
+
+  "item.hats.round_purple_wig": "Round Purple Wig",
+  "item.hats.round_purple_wig_glasses": "Round Purple Wig with Glasses",
+
+  "item.hats.round_red_wig": "Round Red Wig",
+  "item.hats.round_red_wig_glasses": "Round Red Wig with Glasses",
+
+  "item.hats.rubbernipple": "Rubber Nipple",
+
+  "item.hats.sandcastle": "Sandcastle",
+
+  "item.hats.santaclaus": "Santa Claus",
+  "item.hats.santahat": "Santa Hat",
+
+  "item.hats.sausage": "Sausage",
+
+  "item.hats.scouter": "Scouter",
+
+  "item.hats.seaweedhat": "Seaweed Hat",
+
+  "item.hats.shakehat": "Shake Hat",
+
+  "item.hats.sheep": "Sheep",
+
+  "item.hats.shinymagikarp": "Shiny Magikarp",
+
+  "item.hats.shrekears": "Shrek Ears",
+
+  "item.hats.shroomcap": "Shroom Cap",
+
+  "item.hats.sidebow": "Side Bow",
+
+  "item.hats.simsgem": "Sims Gem",
+
+  "item.hats.sleepeyemask": "Sleepy Eye Mask",
+
+  "item.hats.slime_cube_dnd": "Slime Cube (DnD)",
+
+  "item.hats.slime_head": "Slime Head",
+
+  "item.hats.smokingpipe": "Smoking Pipe",
+
+  "item.hats.snowmanbaby": "Snowman Baby",
+
+  "item.hats.sombrero": "Sombrero",
+
+  "item.hats.sonichood": "Sonic Hood",
+
+  "item.hats.spadesoldier": "Spade Soldier",
+
+  "item.hats.special": "Special",
+
+  "item.hats.spiderweb": "Spider Web",
+
+  "item.hats.sport_sunglasses": "Sport Sunglasses",
+
+  "item.hats.springer": "Springer",
+
+  "item.hats.sprout": "Sprout",
+
+  "item.hats.spyzombie": "Spy Zombie",
+
+  "item.hats.stackofeggs": "Stack of Eggs",
+
+  "item.hats.stinkycheeseman": "Stinky Cheese Man",
+
+  "item.hats.strawberry_hat": "Strawberry Hat",
+
+  "item.hats.stress": "Stress",
+
+  "item.hats.stuck_lollipop": "Stuck Lollipop",
+
+  "item.hats.summerhat": "Summer Hat",
+
+  "item.hats.sunglasses": "Sunglasses",
+  "item.hats.sunglassesbig": "Big Sunglasses",
+
+  "item.hats.supersandhat": "Super Sand Hat",
+
+  "item.hats.swimmer": "Swimmer Hat",
+
+  "item.hats.tanuki_leaf": "Tanuki Leaf",
+
+  "item.hats.teddy_bear": "Teddy Bear",
+  "item.hats.teddy_bear_bee": "Teddy Bear Bee",
+  "item.hats.teddy_bear_ken": "Teddy Bear Ken",
+  "item.hats.teddy_bear_panda": "Teddy Bear Panda",
+  "item.hats.teddy_bear_rembo": "Teddy Bear Rembo",
+  "item.hats.teddy_bear_ryu": "Teddy Bear Ryu",
+  "item.hats.teddy_bear_scary": "Teddy Bear Scary",
+
+  "item.hats.the_noise": "The Noise",
+  "item.hats.the_noisier": "The Noisier",
+
+  "item.hats.thumbnail": "Thumbnail",
+
+  "item.hats.tick_on_head": "Tick on Head",
+
+  "item.hats.tinkerhat": "Tinker Hat",
+
+  "item.hats.toast": "Toast",
+
+  "item.hats.toilet": "Toilet",
+
+  "item.hats.tomato_splats": "Tomato Splats",
+
+  "item.hats.topcathat": "Top Cat Hat",
+  "item.hats.tophat": "Top Hat",
+  "item.hats.toptophathat": "Top Top Hat",
+
+  "item.hats.toy_story_alien": "Toy Story Alien",
+
+  "item.hats.traffic_cone": "Traffic Cone",
+
+  "item.hats.triangleshades": "Triangle Shades",
+
+  "item.hats.tricorne": "Tricorne Hat",
+
+  "item.hats.tvhead": "TV Head",
+  "item.hats.tvheadrat": "TV Head Rat",
+  "item.hats.tvheadstatic": "TV Head Static",
+
+  "item.hats.twilight_doll": "Twilight Doll",
+
+  "item.hats.udder_hat": "Udder Hat",
+
+  "item.hats.unicornhorn": "Unicorn Horn",
+
+  "item.hats.ushanka": "Ushanka",
+
+  "item.hats.vikinghat": "Viking Hat",
+  "item.hats.vikinghatbeard": "Viking Hat with Beard",
+
+  "item.hats.villagernose": "Villager Nose",
+
+  "item.hats.winghat": "Wing Hat",
+
+  "item.hats.worms_mine": "Worms Mine",
+  "item.hats.worm_hat": "Worm Hat",
+
+  "item.hats.zigzagwitchhat": "Zig Zag Witch Hat",
+
+  "key.hats.open_gui": "Open Hats Menu",
+  "key.categories.hats": "Hats Classic Edition"
+}
