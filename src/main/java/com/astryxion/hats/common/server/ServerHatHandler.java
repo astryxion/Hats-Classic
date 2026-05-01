@@ -22,6 +22,7 @@ public final class ServerHatHandler {
         if (hatId.equals("none")) {
 
             HatManager.clearHat(player);
+            HatPacketHandler.syncPlayerHatPartToTracking(player);
 
             HatDataCapability.get(player).ifPresent(data -> {
                 data.setEquippedHat(null);
@@ -45,6 +46,7 @@ public final class ServerHatHandler {
 
         ItemStack stack = new ItemStack(item);
         HatManager.setHatStack(player, stack);
+        HatPacketHandler.syncPlayerHatPartToTracking(player);
 
         HatDataCapability.get(player).ifPresent(data -> {
             data.setEquippedHat(id);

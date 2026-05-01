@@ -1,7 +1,9 @@
 package com.astryxion.hats.common.network;
 
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.hat.HatPartCapability;
 import io.netty.buffer.Unpooled;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -9,6 +11,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.IEventBus;
 
 import java.util.function.Consumer;
@@ -168,9 +171,53 @@ public class HatPacketHandler {
         sendToPlayer(player, ID_HAT_UNLOCKED, arr);
     }
 
-    public static void sendSyncHatPartToPlayer(ServerPlayer player, int entityId, net.minecraft.nbt.CompoundTag tag) {
+    public static void sendSyncHatPartToPlayer(ServerPlayer player, int entityId, CompoundTag tag) {
         FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        PacketSyncHatPart.encode(new PacketSyncHatPart(entityId, tag), buf);
-        sendToPlayer(player, ID_SYNC_HAT_PART, buf);
+        try {
+            PacketSyncHatPart.encode(new PacketSyncHatPart(entityId, tag), buf);
+            sendToPlayer(player, ID_SYNC_HAT_PART, buf);
+        } finally {
+            buf.release();
+        }
+    }
+
+    /**
+     * Syncs this player's equipped hat (render state) to every client that can see them, including their own.
+     * Required for multiplayer so other players see the correct hat model.
+     */
+    public static void syncPlayerHatPartToTracking(ServerPlayer player) {
+        if (player == null || player.level().isClientSide()) {
+            return;
+        }
+        var part = HatPartCapability.getOrCreate(player);
+        if (part == null) {
+            return;
+        }
+        CompoundTag tag = part.serializeNBT(player.registryAccess());
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            PacketSyncHatPart.encode(new PacketSyncHatPart(player.getId(), tag), buf);
+            byte[] arr = new byte[buf.readableBytes()];
+            buf.getBytes(buf.readerIndex(), arr);
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntityAndSelf(
+                    player, new HatsS2CPayload(ID_SYNC_HAT_PART, arr));
+        } finally {
+            buf.release();
+        }
+    }
+
+    /**
+     * Sends one player's hat render state to a single observer (e.g. when they start tracking that player).
+     */
+    public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {
+        if (observer == null || hatOwner == null || observer.level().isClientSide()) {
+            return;
+        }
+        var part = HatPartCapability.getOrCreate(hatOwner);
+        if (part == null) {
+            return;
+        }
+        CompoundTag tag = part.serializeNBT(observer.registryAccess());
+        sendSyncHatPartToPlayer(observer, hatOwner.getId(), tag);
     }
 }

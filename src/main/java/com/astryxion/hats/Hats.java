@@ -9,6 +9,9 @@ import com.astryxion.hats.common.hat.HatUnlockHandler;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.registry.HatItemRegistry;
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.api.distmarker.Dist;
@@ -42,6 +45,7 @@ public class Hats {
         NeoForge.EVENT_BUS.addListener(this::onPlayerClone);
         NeoForge.EVENT_BUS.addListener(this::onPlayerRespawn);
         NeoForge.EVENT_BUS.addListener(this::onPlayerChangeDimension);
+        NeoForge.EVENT_BUS.addListener(this::onPlayerStartTracking);
         NeoForge.EVENT_BUS.addListener(this::onServerStarting);
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -52,7 +56,7 @@ public class Hats {
     }
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             HatPartEvents.onPlayerJoinLevel(player);
             HatLoginHandler.onPlayerLogin(player);
             HatWelcomeHandler.onPlayerJoin(player);
@@ -68,15 +72,30 @@ public class Hats {
     }
 
     private void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             HatCloneHandler.onPlayerRespawn(player);
         }
     }
 
     private void onPlayerChangeDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             HatCloneHandler.onDimensionChange(player);
         }
+    }
+
+    /**
+     * When a client starts tracking another player, send that player's hat render state.
+     * Without this, join order can leave remote players with empty HatPart on the client.
+     */
+    private void onPlayerStartTracking(PlayerEvent.StartTracking event) {
+        if (!(event.getEntity() instanceof ServerPlayer tracker)) {
+            return;
+        }
+        Entity target = event.getTarget();
+        if (!(target instanceof Player tracked) || tracked == tracker) {
+            return;
+        }
+        HatPacketHandler.sendPlayerHatPartTo(tracker, tracked);
     }
 
     private void onServerStarting(ServerStartingEvent event) {
