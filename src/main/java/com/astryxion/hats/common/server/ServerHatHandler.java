@@ -35,13 +35,11 @@ public final class ServerHatHandler {
                 );
             });
 
-            var clearedPart = HatPartCapability.get(player);
-            if (clearedPart != null) {
-                HatPacketHandler.sendSyncHatPartToTracking(
-                        player,
-                        player.getId(),
-                        clearedPart.serializeNBT(player.registryAccess()));
-            }
+            var clearedPart = HatPartCapability.getOrCreate(player);
+            HatPacketHandler.sendSyncHatPartToTracking(
+                    player,
+                    player.getId(),
+                    clearedPart.serializeNBT(player.registryAccess()));
 
             return;
         }
@@ -66,12 +64,10 @@ public final class ServerHatHandler {
             );
         });
 
-        var equippedPart = HatPartCapability.get(player);
-        if (equippedPart != null) {
-            HatPacketHandler.sendSyncHatPartToTracking(
-                    player,
-                    player.getId(),
-                    equippedPart.serializeNBT(player.registryAccess()));
-        }
+        var equippedPart = HatPartCapability.getOrCreate(player);
+        HatPacketHandler.sendSyncHatPartToTracking(
+                player,
+                player.getId(),
+                equippedPart.serializeNBT(player.registryAccess()));
     }
 }

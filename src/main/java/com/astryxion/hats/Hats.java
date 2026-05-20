@@ -3,6 +3,7 @@ package com.astryxion.hats;
 import com.astryxion.hats.common.capability.HatCloneHandler;
 import com.astryxion.hats.common.capability.HatLoginHandler;
 import com.astryxion.hats.common.hat.HatPartCapability;
+import com.astryxion.hats.common.hat.HatPartRestore;
 import com.astryxion.hats.common.events.HatWelcomeHandler;
 import com.astryxion.hats.common.hat.HatPartEvents;
 import com.astryxion.hats.common.hat.HatRarityLoader;
@@ -54,13 +55,12 @@ public class Hats implements ModInitializer {
             if (!(trackedEntity instanceof ServerPlayer tracked)) {
                 return;
             }
-            var part = HatPartCapability.get(tracked);
-            if (part != null) {
-                HatPacketHandler.sendSyncHatPartToPlayer(
-                        tracker,
-                        tracked.getId(),
-                        part.serializeNBT(tracker.registryAccess()));
-            }
+            HatPartRestore.restoreFromSavedData(tracked);
+            var part = HatPartCapability.getOrCreate(tracked);
+            HatPacketHandler.sendSyncHatPartToPlayer(
+                    tracker,
+                    tracked.getId(),
+                    part.serializeNBT(tracker.registryAccess()));
         });
 
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) ->

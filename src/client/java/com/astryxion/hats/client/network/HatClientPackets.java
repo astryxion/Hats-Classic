@@ -29,6 +29,7 @@ public final class HatClientPackets {
                     case ID_SYNC_HAT -> {
                         PacketSyncHat msg = PacketSyncHat.decode(copy);
                         PacketSyncHat.handle(msg);
+                        HatClientSync.applyLocalEquippedHat();
                     }
                     case ID_HAT_UNLOCKED -> {
                         Minecraft mc = Minecraft.getInstance();
@@ -51,7 +52,6 @@ public final class HatClientPackets {
 
     public static void sendEquipToServer(String hatId) {
         FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
-        out.writeByte(ID_EQUIP);
         PacketEquipHat.encode(new PacketEquipHat(hatId), out);
         byte[] arr = new byte[out.readableBytes()];
         out.getBytes(out.readerIndex(), arr);
