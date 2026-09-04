@@ -16,7 +16,6 @@ public final class HatClientPackets {
 
     public static void sendEquipToServer(String hatId) {
         FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
-        out.writeByte(ID_EQUIP);
         PacketEquipHat.encode(new PacketEquipHat(hatId), out);
         byte[] arr = new byte[out.readableBytes()];
         out.getBytes(out.readerIndex(), arr);
@@ -25,7 +24,6 @@ public final class HatClientPackets {
 
     public static void sendOpenCosmeticToServer() {
         FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
-        out.writeByte(ID_OPEN_COSMETIC);
         byte[] arr = new byte[out.readableBytes()];
         out.getBytes(out.readerIndex(), arr);
         ClientPacketDistributor.sendToServer(new HatPacketHandler.HatsC2SPayload(ID_OPEN_COSMETIC, arr));
@@ -33,7 +31,6 @@ public final class HatClientPackets {
 
     public static void sendOpenHuntingToServer() {
         FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
-        out.writeByte(ID_OPEN_HUNTING);
         byte[] arr = new byte[out.readableBytes()];
         out.getBytes(out.readerIndex(), arr);
         ClientPacketDistributor.sendToServer(new HatPacketHandler.HatsC2SPayload(ID_OPEN_HUNTING, arr));
