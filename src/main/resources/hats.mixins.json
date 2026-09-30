@@ -1,1 +1,29 @@
-{"required":true,"minVersion":"0.8","package":"com.astryxion.hats.mixin","compatibilityLevel":"JAVA_17","mixins":["LivingEntityTickMixin"],"client":["EntityRendererMixin","LivingEntityRendererMixin"],"injectors":{"defaultRequire":1}}
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.astryxion.hats.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "plugin": "com.astryxion.hats.mixin.HatsMixinPlugin",
+  "refmap": "hats.refmap.json",
+  "mixins": [
+    "LivingEntityTickMixin"
+  ],
+  "client": [
+    "AgeableHierarchicalModelAccessor",
+    "AgeableListModelAccessor",
+    "CameraMixin",
+    "CustomHeadLayerMixin",
+    "EmfModelPartMixin",
+    "EntityRendererMixin",
+    "EnderDragonRendererMixin",
+    "EnderDragonModelMixin",
+    "GameRendererMixin",
+    "ItemInHandRendererMixin",
+    "LivingEntityRendererMixin",
+    "ModelPartAccessor",
+    "ModelPartMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

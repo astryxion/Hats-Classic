@@ -1,7 +1,11 @@
 package com.astryxion.hats;
 
+import com.astryxion.hats.common.hat.HatRarityLoader;
+import com.astryxion.hats.common.hatstand.HatStandRegistry;
+import com.astryxion.hats.common.launcher.HatLauncherRegistry;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.registry.HatItemRegistry;
+import com.astryxion.hats.common.sound.HatsSounds;
 
 import com.mojang.logging.LogUtils;
 
@@ -45,6 +49,9 @@ public class Hats {
         // =========================
 
         HatItemRegistry.register(modEventBus);
+        HatStandRegistry.register(modEventBus);
+        HatLauncherRegistry.register(modEventBus);
+        HatsSounds.register(modEventBus);
 
         // =========================
         // Lifecycle
@@ -60,7 +67,10 @@ public class Hats {
     private void commonSetup(final FMLCommonSetupEvent event) {
 
         // IMPORTANT: register packets after everything loads
-        event.enqueueWork(HatPacketHandler::register);
+        event.enqueueWork(() -> {
+            HatRarityLoader.load();
+            HatPacketHandler.register();
+        });
 
         LOGGER.info("Hats mod common setup complete.");
     }

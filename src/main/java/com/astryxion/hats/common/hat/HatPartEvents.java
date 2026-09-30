@@ -1,7 +1,6 @@
 package com.astryxion.hats.common.hat;
 
 import com.astryxion.hats.Hats;
-import com.astryxion.hats.common.capability.HatDataCapability;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.PacketSyncHat;
 
@@ -38,13 +37,17 @@ public class HatPartEvents {
         if (event.getLevel().isClientSide) return;
 
         if (event.getEntity() instanceof ServerPlayer player) {
-            player.getCapability(HatDataCapability.HAT_DATA).ifPresent(cap -> {
-                // Send the saved NBT data to the client so the GUI is populated
-                HatPacketHandler.sendToPlayer(
-                        player,
-                        new PacketSyncHat(cap.serializeNBT())
-                );
-            });
+            com.astryxion.hats.common.data.ServerHatUnlocks store =
+                    com.astryxion.hats.common.data.ServerHatUnlocks.get(player);
+            store.ensureSeeded(player);
+            java.util.List<net.minecraft.resources.ResourceLocation> unlocked =
+                    java.util.List.copyOf(store.copy(player));
+            net.minecraft.resources.ResourceLocation equipped =
+                    com.astryxion.hats.common.trade.TradeHats.equippedId(player);
+            com.astryxion.hats.common.capability.HatDataAccess.replaceUnlocked(player, unlocked, equipped);
+            HatPacketHandler.sendToPlayer(player, new PacketSyncHat(
+                    com.astryxion.hats.common.capability.HatDataAccess.primaryNbt(player)));
+            com.astryxion.hats.common.network.PacketSetUnlockedHats.send(player, unlocked, equipped);
         }
     }
 }

@@ -1,12 +1,11 @@
 package com.astryxion.hats.common.hat;
 
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.network.HatPacketHandler;
+
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.monster.*;
-import net.minecraft.world.entity.monster.piglin.AbstractPiglin;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -16,100 +15,83 @@ public final class HatManager {
 
     private HatManager() {}
 
-    /**
-     * Mobs that must use the custom slot capability.
-     * Includes Players for capability access, but logic handles them differently.
-     */
-    public static boolean isCustomOnly(LivingEntity entity) {
-        return entity instanceof Player
-                || entity instanceof Zombie
-                || entity instanceof ZombieVillager
-                || entity instanceof Husk
-                || entity instanceof Drowned
-                || entity instanceof Skeleton
-                || entity instanceof Stray
-                || entity instanceof AbstractPiglin
-                || entity instanceof ZombifiedPiglin;
-    }
-
     public static HatPart get(LivingEntity entity) {
         return entity.getCapability(HatPartCapability.HAT_PART).orElse(null);
     }
 
     /**
-     * Finds the hat stack and handles the "Courier" sync logic.
+     * Hats live only in {@link HatPart}. The vanilla helmet slot is never a
+     * courier — zombies keep their armor, piglins can loot helmets, and
+     * undead still burn in daylight.
      */
     public static ItemStack getHatStack(LivingEntity entity) {
-        if (entity == null) return ItemStack.EMPTY;
-
-        // ============================
-        // UNIVERSAL BABY BLOCKER
-        // ============================
-
-        // Players are never babies, so safe.
-        if (entity.isBaby()) {
+        if (entity == null) {
             return ItemStack.EMPTY;
         }
-
         HatPart part = get(entity);
-        ItemStack helmetStack = entity.getItemBySlot(EquipmentSlot.HEAD);
-
-        // --- CUSTOM ENTITY SYSTEM ---
-        if (isCustomOnly(entity)) {
-
-            // CRITICAL FIX: Only run the auto-wipe logic for MOBS.
-            // Players should keep their helmet slot untouched to avoid deleting armor.
-            if (!(entity instanceof Player)) {
-                if (!helmetStack.isEmpty() && isModHat(helmetStack)) {
-                    // Capture for Client or ensure Server has it in capability before wipe
-                    if (part != null && (entity.level().isClientSide() || !part.hasHat())) {
-                        part.setHatStack(helmetStack.copy());
-                    }
-                    // Wipe helmet for mobs to allow burning/looting
-                    entity.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
-                }
-            }
-
-            // Always return capability for these entities (including Players)
-            return (part != null && part.hasHat()) ? part.getHatStack() : ItemStack.EMPTY;
-        }
-
-        // --- FALLBACK FOR REGULAR MOBS (Cows, Pigs, etc.) ---
-        if (part != null && part.hasHat()) {
-            return part.getHatStack();
-        }
-
-        if (!helmetStack.isEmpty() && isModHat(helmetStack)) {
-            return helmetStack;
-        }
-
-        return ItemStack.EMPTY;
+        return (part != null && part.hasHat()) ? part.getHatStack() : ItemStack.EMPTY;
     }
 
     public static void setHatStack(LivingEntity entity, ItemStack stack) {
-        if (entity == null) return;
+        if (entity == null) {
+            return;
+        }
 
         HatPart part = get(entity);
         if (part != null) {
             part.setHatStack(stack);
         }
 
-        // Only put in helmet for mobs as a sync courier.
-        // For players, we don't want to mess with their head slot during setting.
-        if (!(entity instanceof Player)) {
-            entity.setItemSlot(EquipmentSlot.HEAD, stack.copy());
+        stripCourierHat(entity);
+
+        if (!entity.level().isClientSide()) {
+            HatPacketHandler.syncHatPartToTracking(entity);
         }
     }
 
     public static void clearHat(LivingEntity entity) {
-        if (entity == null) return;
+        if (entity == null) {
+            return;
+        }
 
         HatPart part = get(entity);
         if (part != null) {
             part.clear();
         }
 
-        // Only clear the helmet slot if it contains a mod hat.
+        stripCourierHat(entity);
+
+        if (!entity.level().isClientSide()) {
+            HatPacketHandler.syncHatPartToTracking(entity);
+        }
+    }
+
+    /**
+     * Old builds stuffed hats into {@code HEAD} for client sync. Pull that
+     * stack into the custom slot if needed, then free the helmet.
+     */
+    public static void migrateAndStripCourierHat(LivingEntity entity) {
+        if (entity == null || entity.level().isClientSide()) {
+            return;
+        }
+
+        ItemStack helmet = entity.getItemBySlot(EquipmentSlot.HEAD);
+        if (helmet.isEmpty() || !isModHat(helmet)) {
+            return;
+        }
+
+        HatPart part = get(entity);
+        if (part != null && !part.hasHat()) {
+            part.setHatStack(helmet.copy());
+        }
+        entity.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
+        HatPacketHandler.syncHatPartToTracking(entity);
+    }
+
+    private static void stripCourierHat(LivingEntity entity) {
+        if (entity.level().isClientSide()) {
+            return;
+        }
         ItemStack head = entity.getItemBySlot(EquipmentSlot.HEAD);
         if (isModHat(head)) {
             entity.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
@@ -134,7 +116,9 @@ public final class HatManager {
 
     public static ResourceLocation getEquippedHatId(LivingEntity entity) {
         ItemStack stack = getHatStack(entity);
-        if (stack.isEmpty()) return null;
+        if (stack.isEmpty()) {
+            return null;
+        }
         return ForgeRegistries.ITEMS.getKey(stack.getItem());
     }
 
@@ -142,7 +126,9 @@ public final class HatManager {
      * Checks if an item is from this mod and is NOT a standard armor helmet.
      */
     public static boolean isModHat(ItemStack stack) {
-        if (stack.isEmpty()) return false;
+        if (stack.isEmpty()) {
+            return false;
+        }
 
         if (stack.getItem() instanceof ArmorItem armor) {
             if (armor.getEquipmentSlot() == EquipmentSlot.HEAD) {
@@ -152,5 +138,17 @@ public final class HatManager {
 
         ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
         return id != null && id.getNamespace().equals(Hats.MODID);
+    }
+
+    /**
+     * Real helmet / pumpkin / skull in the vanilla head slot. Mod hats never
+     * live there, so a non-empty non-hat stack is headgear the hat must clear.
+     */
+    public static boolean wearsHelmet(LivingEntity entity) {
+        if (entity == null) {
+            return false;
+        }
+        ItemStack head = entity.getItemBySlot(EquipmentSlot.HEAD);
+        return !head.isEmpty() && !isModHat(head);
     }
 }

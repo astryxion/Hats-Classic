@@ -1,16 +1,15 @@
 modLoader="javafml"
 loaderVersion="[47,)"
-license="All Rights Reserved"
+license="${mod_license}"
 
 [[mods]]
 modId="hats"
-version="2.2.0"
-displayName="Hats"
+version="${mod_version}"
+displayName="${mod_name}"
 logoFile="logo.png"
-authors="Astryxion"
-description='''
-Cosmetic hats for players and mobs with cosmetic and hunting unlock modes.
-'''
+authors="${mod_authors}"
+credits="${mod_credits}"
+description='''${mod_description}'''
 
 # ============================
 # Dependencies
@@ -37,5 +36,15 @@ versionRange="[0,)"
 ordering="NONE"
 side="CLIENT"
 
+[[dependencies.hats]]
+modId="skinlayers3d"
+mandatory=false
+versionRange="[0,)"
+ordering="AFTER"
+side="CLIENT"
+
 [[mixins]]
 config="hats.mixins.json"
+
+[modproperties.hats]
+mixinConfigs="hats.mixins.json"

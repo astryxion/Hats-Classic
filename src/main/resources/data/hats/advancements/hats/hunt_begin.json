@@ -16,7 +16,7 @@
     "hidden": false
   },
   "criteria": {
-    "trigger_from_code": {
+    "unlock_via_code": {
       "trigger": "minecraft:impossible"
     }
   }

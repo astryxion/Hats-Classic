@@ -1,0 +1,38 @@
+{
+  "parent": "hats:hats/craft_hat_launcher",
+  "display": {
+    "icon": {
+      "item": "hats:hat_launcher"
+    },
+    "title": {
+      "translate": "hats.advancement.enchantHatLauncher.title"
+    },
+    "description": {
+      "translate": "hats.advancement.enchantHatLauncher.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "rewards": {
+    "experience": 100
+  },
+  "criteria": {
+    "enchant_launcher": {
+      "trigger": "minecraft:enchanted_item",
+      "conditions": {
+        "item": {
+          "items": [
+            "hats:hat_launcher"
+          ]
+        }
+      }
+    }
+  },
+  "requirements": [
+    [
+      "enchant_launcher"
+    ]
+  ]
+}

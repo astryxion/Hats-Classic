@@ -1,0 +1,16 @@
+{
+  "parent": "hats:hats/hat_count_25",
+  "display": {
+    "icon": { "item": "hats:adv_icon_hat50" },
+    "title": { "translate": "hats.advancement.hatCount50.title" },
+    "description": { "translate": "hats.advancement.hatCount50.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "unlock_via_code": { "trigger": "minecraft:impossible" }
+  },
+  "rewards": { "experience": 500 }
+}

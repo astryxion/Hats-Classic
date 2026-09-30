@@ -17,6 +17,7 @@ public class HatWelcomeHandler {
     @SubscribeEvent
     public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (!Config.showWelcomeMessage) return;
 
         player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
             // Only show the message if the player hasn't seen it yet in this world

@@ -1,7 +1,8 @@
 package com.astryxion.hats.client.keybinds;
 
 import com.astryxion.hats.Hats;
-import com.astryxion.hats.client.gui.HatScreen;
+import com.astryxion.hats.client.gui.HatsGui;
+import com.astryxion.hats.client.gui.modern.ModernGuiCamera;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -50,6 +51,8 @@ public class HatKeybinds {
 
             if (event.phase != TickEvent.Phase.END) return;
 
+            ModernGuiCamera.tick();
+
             if (OPEN_HATS == null) return;
 
             if (OPEN_HATS.consumeClick()) {
@@ -59,7 +62,8 @@ public class HatKeybinds {
                 if (mc.player == null) return;
 
                 if (mc.screen == null) {
-                    mc.setScreen(new HatScreen());
+                    ModernGuiCamera.resetOrbit();
+                    HatsGui.open();
                 }
             }
         }

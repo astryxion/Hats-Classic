@@ -40,7 +40,11 @@ public class HatToast implements Toast {
                 false
         );
 
-        gfx.renderFakeItem(hatStack, 8, 8);
+        if (com.astryxion.hats.common.tabula.TabulaHats.isTabula(hatStack)) {
+            com.astryxion.hats.client.tabula.TabulaHatGuiPreview.render(gfx, hatStack, 6, 6, 20);
+        } else {
+            gfx.renderFakeItem(hatStack, 8, 8);
+        }
 
         return time >= 5000
                 ? Visibility.HIDE

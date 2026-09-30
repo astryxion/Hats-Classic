@@ -2,8 +2,21 @@ package com.astryxion.hats.common.network;
 
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.hat.HatPartCapability;
+import com.astryxion.hats.common.network.trade.PacketCloseTradeBuilder;
+import com.astryxion.hats.common.network.trade.PacketIncomingTradeOffer;
+import com.astryxion.hats.common.network.trade.PacketNearbyPlayersList;
+import com.astryxion.hats.common.network.trade.PacketPeerInventory;
+import com.astryxion.hats.common.network.trade.PacketRequestNearbyPlayers;
+import com.astryxion.hats.common.network.trade.PacketRequestPeerInventory;
+import com.astryxion.hats.common.network.trade.PacketRespondTradeOffer;
+import com.astryxion.hats.common.network.trade.PacketSendTradeOffer;
+import com.astryxion.hats.common.network.trade.PacketTradeError;
+import com.astryxion.hats.common.network.trade.PacketTradeOfferRevoked;
+import com.astryxion.hats.common.network.trade.PacketTradePartnerLeft;
+import com.astryxion.hats.common.network.trade.PacketTradeResolved;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.loading.FMLEnvironment;
@@ -18,7 +31,7 @@ public class HatPacketHandler {
 
     private static final String CLIENT_HAT_HANDLERS = "com.astryxion.hats.client.network.HatClientPacketHandlers";
 
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
     private static int id = 0;
 
     public static final SimpleChannel CHANNEL =
@@ -62,6 +75,30 @@ public class HatPacketHandler {
                 PacketOpenHuntingMenu::handle
         );
 
+        CHANNEL.registerMessage(
+                id++,
+                PacketUpdateHatStand.class,
+                PacketUpdateHatStand::encode,
+                PacketUpdateHatStand::decode,
+                PacketUpdateHatStand::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                PacketOpenHatStand.class,
+                PacketOpenHatStand::encode,
+                PacketOpenHatStand::decode,
+                PacketOpenHatStand::handle
+        );
+
+        CHANNEL.registerMessage(
+                id++,
+                PacketSetLauncherHat.class,
+                PacketSetLauncherHat::encode,
+                PacketSetLauncherHat::decode,
+                PacketSetLauncherHat::handle
+        );
+
         // =====================
         // SERVER -> CLIENT
         // =====================
@@ -91,6 +128,26 @@ public class HatPacketHandler {
                 PacketSyncHatPart::decode,
                 PacketSyncHatPart::handle
         );
+
+        registerTradePackets();
+    }
+
+    private static void registerTradePackets() {
+        CHANNEL.registerMessage(id++, PacketRequestNearbyPlayers.class, PacketRequestNearbyPlayers::encode, PacketRequestNearbyPlayers::decode, PacketRequestNearbyPlayers::handle);
+        CHANNEL.registerMessage(id++, PacketRequestPeerInventory.class, PacketRequestPeerInventory::encode, PacketRequestPeerInventory::decode, PacketRequestPeerInventory::handle);
+        CHANNEL.registerMessage(id++, PacketSendTradeOffer.class, PacketSendTradeOffer::encode, PacketSendTradeOffer::decode, PacketSendTradeOffer::handle);
+        CHANNEL.registerMessage(id++, PacketRespondTradeOffer.class, PacketRespondTradeOffer::encode, PacketRespondTradeOffer::decode, PacketRespondTradeOffer::handle);
+        CHANNEL.registerMessage(id++, PacketCloseTradeBuilder.class, PacketCloseTradeBuilder::encode, PacketCloseTradeBuilder::decode, PacketCloseTradeBuilder::handle);
+
+        CHANNEL.registerMessage(id++, PacketNearbyPlayersList.class, PacketNearbyPlayersList::encode, PacketNearbyPlayersList::decode, PacketNearbyPlayersList::handle);
+        CHANNEL.registerMessage(id++, PacketPeerInventory.class, PacketPeerInventory::encode, PacketPeerInventory::decode, PacketPeerInventory::handle);
+        CHANNEL.registerMessage(id++, PacketIncomingTradeOffer.class, PacketIncomingTradeOffer::encode, PacketIncomingTradeOffer::decode, PacketIncomingTradeOffer::handle);
+        CHANNEL.registerMessage(id++, PacketTradeResolved.class, PacketTradeResolved::encode, PacketTradeResolved::decode, PacketTradeResolved::handle);
+        CHANNEL.registerMessage(id++, PacketTradeOfferRevoked.class, PacketTradeOfferRevoked::encode, PacketTradeOfferRevoked::decode, PacketTradeOfferRevoked::handle);
+        CHANNEL.registerMessage(id++, PacketTradePartnerLeft.class, PacketTradePartnerLeft::encode, PacketTradePartnerLeft::decode, PacketTradePartnerLeft::handle);
+        CHANNEL.registerMessage(id++, PacketTradeError.class, PacketTradeError::encode, PacketTradeError::decode, PacketTradeError::handle);
+        CHANNEL.registerMessage(id++, PacketSetUnlockedHats.class, PacketSetUnlockedHats::encode, PacketSetUnlockedHats::decode, PacketSetUnlockedHats::handle);
+        CHANNEL.registerMessage(id++, PacketRehatify.class, PacketRehatify::encode, PacketRehatify::decode, PacketRehatify::handle);
     }
 
     /**
@@ -126,28 +183,36 @@ public class HatPacketHandler {
     }
 
     /**
-     * Syncs this player's equipped hat (render capability) to every client that can see them, including their own.
-     * Required for multiplayer so other players see the correct hat model.
+     * Syncs this entity's hat to every client that can see them. Players also
+     * receive their own copy. Hats never use the helmet slot as a courier.
      */
-    public static void syncPlayerHatPartToTracking(ServerPlayer player) {
-        if (player == null || player.level().isClientSide()) {
+    public static void syncHatPartToTracking(LivingEntity entity) {
+        if (entity == null || entity.level().isClientSide()) {
             return;
         }
-        player.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
+        entity.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
                 CHANNEL.send(
-                        PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
-                        new PacketSyncHatPart(player.getId(), part.serializeNBT())
+                        PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity),
+                        new PacketSyncHatPart(entity.getId(), part.serializeNBT())
                 ));
     }
 
+    public static void syncPlayerHatPartToTracking(ServerPlayer player) {
+        syncHatPartToTracking(player);
+    }
+
     /**
-     * Sends one player's hat state to a single observer (e.g. when they start tracking that player).
+     * Sends one entity's hat state to a single observer (e.g. when they start tracking).
      */
-    public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {
+    public static void sendHatPartTo(ServerPlayer observer, LivingEntity hatOwner) {
         if (observer == null || hatOwner == null || observer.level().isClientSide()) {
             return;
         }
         hatOwner.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
                 sendToPlayer(observer, new PacketSyncHatPart(hatOwner.getId(), part.serializeNBT())));
+    }
+
+    public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {
+        sendHatPartTo(observer, hatOwner);
     }
 }

@@ -25,6 +25,10 @@ public class HatDataProvider implements ICapabilityProvider, ICapabilitySerializ
         return LazyOptional.empty();
     }
 
+    public PlayerHatDataImpl data() {
+        return data;
+    }
+
     @Override
     public CompoundTag serializeNBT() {
         // Delegate to the implementation we fixed earlier

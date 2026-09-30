@@ -2,13 +2,13 @@
   "parent": "hats:hats/root",
   "display": {
     "icon": {
-      "item": "minecraft:iron_helmet"
+      "item": "hats:adv_icon_hat"
     },
     "title": {
-      "text": "Trendsetter"
+      "translate": "hats.advancement.wearHat.title"
     },
     "description": {
-      "text": "Equip a hat for the first time. Looking good!"
+      "translate": "hats.advancement.wearHat.description"
     },
     "frame": "task",
     "show_toast": true,

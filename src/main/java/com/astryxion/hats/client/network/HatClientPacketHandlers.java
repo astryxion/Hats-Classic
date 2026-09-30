@@ -12,5 +12,6 @@ public final class HatClientPacketHandlers {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         mc.getToasts().addToast(new HatToast(msg.getHatStack()));
+        com.astryxion.hats.client.gui.HatsGui.refreshIfOpen();
     }
 }

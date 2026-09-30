@@ -2,14 +2,18 @@ package com.astryxion.hats.common.spawn;
 
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.Config;
+import com.astryxion.hats.common.hat.HatAccessories;
+import com.astryxion.hats.common.hat.HatContributor;
 import com.astryxion.hats.common.hat.HatManager;
-import com.astryxion.hats.common.hat.HatPart;
 import com.astryxion.hats.common.registry.HatItemRegistry;
+import com.astryxion.hats.common.tabula.TabulaHatDefinition;
+import com.astryxion.hats.common.tabula.TabulaHats;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.MobType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -18,6 +22,7 @@ import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -32,27 +37,15 @@ public class HatSpawnHandler {
     /** Persistent lock so mobs are evaluated ONCE only */
     private static final String HAT_ROLLED_KEY = "HatsModHatRolled";
 
-    /**
-     * SMART TICK WIPE:
-     * 1. Forces Zombies/Skeletons to burn by clearing the courier hat from the head slot.
-     * 2. Frees up the head slot for Piglins to loot player armor.
-     * 3. PROTECTS looted armor: If the item is NOT a mod hat, it won't be wiped.
-     */
     @SubscribeEvent
     public static void onLivingTick(LivingEvent.LivingTickEvent event) {
         LivingEntity entity = event.getEntity();
-
-        // Server-side only
-        if (entity.level().isClientSide())
+        if (entity.level().isClientSide()) {
             return;
-
-        if (HatManager.isCustomOnly(entity)) {
-            ItemStack helmet = entity.getItemBySlot(EquipmentSlot.HEAD);
-
-            if (!helmet.isEmpty() && HatManager.isModHat(helmet)) {
-                entity.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
-            }
         }
+        HatManager.migrateAndStripCourierHat(entity);
+        MobHatPolicy.apply(entity);
+        clearUndeadSunlightFire(entity);
     }
 
     // ==========================
@@ -65,46 +58,17 @@ public class HatSpawnHandler {
         if (event.getLevel().isClientSide())
             return;
 
-        if (!Config.enableHats || !Config.enableMobHats)
-            return;
-
         Entity entity = event.getEntity();
 
         if (!(entity instanceof LivingEntity living))
             return;
 
-        // Enabled mobs
-        if (entity.getType() == EntityType.COW) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.SHEEP) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.PIG) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.CHICKEN) tryEquipRandomHat(living);
+        MobHatPolicy.apply(living);
 
-        if (entity.getType() == EntityType.ZOMBIE) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.ZOMBIE_VILLAGER) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.SKELETON) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.STRAY) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.WITHER_SKELETON) tryEquipRandomHat(living);
+        if (!Config.canMobSpawnWithHats(living.getType()))
+            return;
 
-        if (entity.getType() == EntityType.HUSK) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.DROWNED) tryEquipRandomHat(living);
-
-        if (entity.getType() == EntityType.CREEPER) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.ENDERMAN) tryEquipRandomHat(living);
-
-        if (entity.getType() == EntityType.PILLAGER) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.VINDICATOR) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.EVOKER) tryEquipRandomHat(living);
-
-        if (entity.getType() == EntityType.VILLAGER) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.WANDERING_TRADER) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.IRON_GOLEM) tryEquipRandomHat(living);
-
-        if (entity.getType() == EntityType.PIGLIN) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.PIGLIN_BRUTE) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.ZOMBIFIED_PIGLIN) tryEquipRandomHat(living);
-
-        if (entity.getType() == EntityType.SQUID) tryEquipRandomHat(living);
-        if (entity.getType() == EntityType.GLOW_SQUID) tryEquipRandomHat(living);
+        tryEquipRandomHat(living);
     }
 
     // ==========================
@@ -126,11 +90,7 @@ public class HatSpawnHandler {
         if (HatManager.hasHat(entity))
             return;
 
-        List<Item> hats = HatItemRegistry.ALL_HATS
-                .stream()
-                .map(reg -> reg.get())
-                .toList();
-
+        List<Item> hats = spawnCandidateHats();
         if (hats.isEmpty())
             return;
 
@@ -138,15 +98,49 @@ public class HatSpawnHandler {
             return;
 
         Item randomHat = hats.get(RANDOM.nextInt(hats.size()));
-        ItemStack hatStack = new ItemStack(randomHat);
-
-        // Store in capability
-        HatPart part = HatManager.get(entity);
-        if (part != null) {
-            part.setHatStack(hatStack.copy());
+        ItemStack stack = new ItemStack(randomHat);
+        TabulaHatDefinition tabula = TabulaHats.from(stack);
+        if (tabula != null && !tabula.accessories.isEmpty()) {
+            HatAccessories.applyRandom(stack, tabula, RANDOM);
         }
+        HatManager.setHatStack(entity, stack);
+    }
 
-        // Courier helmet slot for client sync
-        entity.setItemSlot(EquipmentSlot.HEAD, hatStack);
+    private static List<Item> spawnCandidateHats() {
+        List<Item> hats = new ArrayList<>();
+        for (var reg : HatItemRegistry.ALL_HATS) {
+            Item item = reg.get();
+            if (Config.disableContributorHats && HatContributor.isContributor(item)) {
+                continue;
+            }
+            hats.add(item);
+        }
+        return hats;
+    }
+
+    /**
+     * Renewed parity: hatted undead that would burn in sunlight have fire cleared.
+     */
+    private static void clearUndeadSunlightFire(LivingEntity entity) {
+        if (!Config.preventUndeadFire) {
+            return;
+        }
+        if (!(entity.level() instanceof ServerLevel level) || !level.isDay()) {
+            return;
+        }
+        if (entity.getMobType() != MobType.UNDEAD) {
+            return;
+        }
+        if (!HatManager.hasHat(entity) || !entity.isOnFire()) {
+            return;
+        }
+        if (entity.isInWaterRainOrBubble() || entity.isInPowderSnow) {
+            return;
+        }
+        BlockPos eyePos = BlockPos.containing(entity.getX(), entity.getEyeY(), entity.getZ());
+        if (!level.canSeeSky(eyePos)) {
+            return;
+        }
+        entity.clearFire();
     }
 }

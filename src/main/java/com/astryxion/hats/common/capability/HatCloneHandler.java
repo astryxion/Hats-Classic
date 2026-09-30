@@ -65,6 +65,8 @@ public class HatCloneHandler {
         // Sync GUI Unlocks (1 argument: NBT)
         player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
             HatPacketHandler.sendToPlayer(player, new PacketSyncHat(data.serializeNBT()));
+            com.astryxion.hats.common.network.PacketSetUnlockedHats.send(
+                    player, data.getUnlockedHats(), data.getEquippedHat());
         });
     }
 }

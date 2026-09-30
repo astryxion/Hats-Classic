@@ -1,0 +1,16 @@
+{
+  "parent": "hats:hats/collect_500",
+  "display": {
+    "icon": { "item": "hats:adv_icon_hat545" },
+    "title": { "translate": "hats.advancement.collect545.title" },
+    "description": { "translate": "hats.advancement.collect545.description" },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "unlock_via_code": { "trigger": "minecraft:impossible" }
+  },
+  "rewards": { "experience": 1000 }
+}

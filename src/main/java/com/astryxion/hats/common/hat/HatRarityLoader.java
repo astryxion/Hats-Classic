@@ -3,6 +3,8 @@ package com.astryxion.hats.common.hat;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.tabula.TabulaHatDefinition;
+import com.astryxion.hats.common.tabula.TabulaHats;
 import net.minecraft.resources.ResourceLocation;
 
 import java.io.InputStreamReader;
@@ -28,24 +30,31 @@ public final class HatRarityLoader {
                     );
 
             if (resource == null) {
-                Hats.LOGGER.warn("hat_rarity.json not found, defaulting all hats to COMMON");
-                return;
+                Hats.LOGGER.warn("hat_rarity.json not found, defaulting unlisted hats to COMMON");
+            } else {
+
+                Type type = new TypeToken<Map<String, String>>(){}.getType();
+                Map<String, String> raw = new Gson().fromJson(
+                        new InputStreamReader(resource),
+                        type
+                );
+
+                raw.forEach((key, value) ->
+                        RARITIES.put(key, HatRarity.fromString(value))
+                );
+
+                Hats.LOGGER.info("Loaded {} hat rarities", RARITIES.size());
             }
-
-            Type type = new TypeToken<Map<String, String>>(){}.getType();
-            Map<String, String> raw = new Gson().fromJson(
-                    new InputStreamReader(resource),
-                    type
-            );
-
-            raw.forEach((key, value) ->
-                    RARITIES.put(key, HatRarity.fromString(value))
-            );
-
-            Hats.LOGGER.info("Loaded {} hat rarities", RARITIES.size());
 
         } catch (Exception e) {
             Hats.LOGGER.error("Failed to load hat_rarity.json", e);
+        }
+
+        for (String id : TabulaHats.ids()) {
+            TabulaHatDefinition def = TabulaHats.get(id);
+            if (def != null) {
+                RARITIES.put(id, def.rarity);
+            }
         }
     }
 

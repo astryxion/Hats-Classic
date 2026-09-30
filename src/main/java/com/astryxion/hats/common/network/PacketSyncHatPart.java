@@ -4,7 +4,7 @@ import com.astryxion.hats.common.hat.HatPartCapability;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -36,8 +36,8 @@ public class PacketSyncHatPart {
                     var mc = net.minecraft.client.Minecraft.getInstance();
                     if (mc.level == null) return;
                     Entity entity = mc.level.getEntity(msg.playerId);
-                    if (entity instanceof Player player) {
-                        player.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
+                    if (entity instanceof LivingEntity living) {
+                        living.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
                                 part.deserializeNBT(msg.tag));
                     }
                 }));

@@ -28,18 +28,7 @@ public final class HatEquipController {
         if (player == null || hat == null)
             return;
 
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(hat);
-
-        if (id == null)
-            return;
-
-        // SEND TO SERVER (REAL EQUIP)
-        HatPacketHandler.CHANNEL.sendToServer(
-                new PacketEquipHat(id.toString())
-        );
-
-        // optional instant client feedback
-        HatManager.setHatStack(player, new ItemStack(hat));
+        equipStack(player, new ItemStack(hat));
     }
 
     public static void equipStack(Player player, ItemStack stack) {
@@ -47,13 +36,11 @@ public final class HatEquipController {
         if (player == null || stack.isEmpty())
             return;
 
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
-
-        if (id == null)
+        if (ForgeRegistries.ITEMS.getKey(stack.getItem()) == null)
             return;
 
         HatPacketHandler.CHANNEL.sendToServer(
-                new PacketEquipHat(id.toString())
+                new PacketEquipHat(stack)
         );
 
         HatManager.setHatStack(player, stack.copy());

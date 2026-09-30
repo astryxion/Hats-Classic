@@ -21,9 +21,11 @@ public class HatCapabilityEvents {
     @SubscribeEvent
     public static void onAttachCapabilities(AttachCapabilitiesEvent<?> event) {
 
-        if (!(event.getObject() instanceof Player))
+        if (!(event.getObject() instanceof Player player))
             return;
 
-        event.addCapability(HAT_DATA_ID, new HatDataProvider());
+        HatDataProvider provider = new HatDataProvider();
+        HatDataAccess.register(player, provider.data());
+        event.addCapability(HAT_DATA_ID, provider);
     }
 }

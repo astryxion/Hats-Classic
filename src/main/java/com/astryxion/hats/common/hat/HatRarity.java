@@ -1,20 +1,19 @@
 package com.astryxion.hats.common.hat;
 
-import net.minecraft.ChatFormatting;
-
 public enum HatRarity {
-    COMMON(ChatFormatting.WHITE),
-    UNCOMMON(ChatFormatting.YELLOW),
-    RARE(ChatFormatting.AQUA),
-    EPIC(ChatFormatting.LIGHT_PURPLE);
+    COMMON(0xFFFFFF),
+    UNCOMMON(0x55FF55),
+    RARE(0x5555FF),
+    EPIC(0xFF55FF),
+    LEGENDARY(0xFFAA00);
 
-    private final ChatFormatting color;
+    private final int color;
 
-    HatRarity(ChatFormatting color) {
+    HatRarity(int color) {
         this.color = color;
     }
 
-    public ChatFormatting getColor() {
+    public int getColor() {
         return color;
     }
 

@@ -1,22 +1,15 @@
 {
   "parent": "hats:hats/root",
   "display": {
-    "icon": {
-      "item": "minecraft:armor_stand"
-    },
-    "title": {
-      "text": "New Wardrobe"
-    },
-    "description": {
-      "text": "The first of many. Unlock your first hat."
-    },
+    "icon": { "item": "hats:adv_icon_hat" },
+    "title": { "translate": "hats.advancement.hatsUnlocked1.title" },
+    "description": { "translate": "hats.advancement.hatsUnlocked1.description" },
     "frame": "task",
     "show_toast": true,
-    "announce_to_chat": true
+    "announce_to_chat": true,
+    "hidden": false
   },
   "criteria": {
-    "unlock_via_code": {
-      "trigger": "minecraft:impossible"
-    }
+    "unlock_via_code": { "trigger": "minecraft:impossible" }
   }
 }

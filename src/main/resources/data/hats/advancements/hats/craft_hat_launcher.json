@@ -1,0 +1,37 @@
+{
+  "parent": "hats:hats/root",
+  "display": {
+    "icon": {
+      "item": "hats:hat_launcher"
+    },
+    "title": {
+      "translate": "hats.advancement.craftHatLauncher.title"
+    },
+    "description": {
+      "translate": "hats.advancement.craftHatLauncher.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "get_launcher": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "hats:hat_launcher"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "get_launcher"
+    ]
+  ]
+}

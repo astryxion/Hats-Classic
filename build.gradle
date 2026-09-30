@@ -1,9 +1,22 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
+    }
+}
+
 plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
 }
+
+apply plugin: 'org.spongepowered.mixin'
 
 version = mod_version
 group = mod_group_id
@@ -20,6 +33,8 @@ minecraft {
 
     mappings channel: mapping_channel, version: mapping_version
 
+    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+
     copyIdeResources = true
 
     runs {
@@ -28,6 +43,8 @@ minecraft {
 
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${project.buildDir}/createSrgToMcp/output.srg"
 
             mods {
                 "${mod_id}" {
@@ -38,6 +55,21 @@ minecraft {
 
         client {
             property 'forge.enabledGameTestNamespaces', mod_id
+        }
+
+        // Dual-client LAN testing. Existing runClient is unchanged.
+        // Inherit the full client launch (same Forge/MC/mod), then override
+        // username + game directory so two instances can run at once.
+        clientPlayer1 {
+            parent runs.client
+            workingDirectory project.file('run-player1')
+            args '--username', 'Player1', '--uuid', '11111111-1111-1111-1111-111111111111'
+        }
+
+        clientPlayer2 {
+            parent runs.client
+            workingDirectory project.file('run-player2')
+            args '--username', 'Player2', '--uuid', '22222222-2222-2222-2222-222222222222'
         }
 
         server {
@@ -60,6 +92,11 @@ minecraft {
 // Do not point only at src/main/resources/resources — that folder is empty here and produced jars with no mods.toml (mod invisible in-game / on CurseForge).
 sourceSets {
     main {
+        java {
+            if (file('libs/entity_model_features-3.3.9-1.20.1-forge.jar').exists()) {
+                exclude 'traben/**'
+            }
+        }
         resources {
             srcDirs = ['src/main/resources', 'src/generated/resources']
         }
@@ -77,6 +114,7 @@ repositories {
 dependencies {
 
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
     // ============================
     // MO' BENDS OPTIONAL COMPAT
@@ -85,6 +123,20 @@ dependencies {
     if (file('libs/MoBends_1.20.1-3.0.4.jar').exists()) {
         compileOnly name: "MoBends_1.20.1-3.0.4"
     }
+
+    // Fresh Animations runtime (EMF). Optional at runtime; needed so the
+    // optional EMF mixin can compile against renderLikeVanilla.
+    if (file('libs/entity_model_features-3.3.9-1.20.1-forge.jar').exists()) {
+        compileOnly name: "entity_model_features-3.3.9-1.20.1-forge"
+    }
+    if (file('libs/entity_texture_features-7.2.4-1.20.1-forge.jar').exists()) {
+        compileOnly name: "entity_texture_features-7.2.4-1.20.1-forge"
+    }
+}
+
+mixin {
+    add sourceSets.main, 'hats.refmap.json'
+    config 'hats.mixins.json'
 }
 
 tasks.named('processResources', ProcessResources).configure {
@@ -94,7 +146,7 @@ tasks.named('processResources', ProcessResources).configure {
             forge_version: forge_version, forge_version_range: forge_version_range,
             loader_version_range: loader_version_range,
             mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version,
-            mod_authors: mod_authors, mod_description: mod_description,
+            mod_authors: mod_authors, mod_credits: mod_credits, mod_description: mod_description,
     ]
 
     inputs.properties replaceProperties
@@ -114,11 +166,15 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.jar.archiveVersion,
                 'Implementation-Vendor'   : mod_authors,
-                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'MixinConfigs'            : 'hats.mixins.json'
         ])
     }
 
     finalizedBy 'reobfJar'
+
+    // Compile stand-in for the optional EMF mixin target. Never ship it.
+    exclude 'traben/**'
 }
 
 publishing {

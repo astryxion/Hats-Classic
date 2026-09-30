@@ -1,10 +1,9 @@
 package com.astryxion.hats.common.network;
 
-import com.astryxion.hats.Hats;
-import net.minecraft.advancements.Advancement;
-import net.minecraft.advancements.AdvancementProgress;
+import com.astryxion.hats.Config;
+import com.astryxion.hats.common.hat.HatAdvancements;
+import com.astryxion.hats.common.hat.HatMode;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
@@ -18,22 +17,14 @@ public class PacketOpenHuntingMenu {
         NetworkEvent.Context ctx = supplier.get();
         ctx.enqueueWork(() -> {
             ServerPlayer player = ctx.getSender();
-
-            // 🛑 Check if the player exists AND is NOT in Creative Mode
-            if (player != null && !player.isCreative()) {
-                Advancement advancement = player.getServer().getAdvancements()
-                        .getAdvancement(new ResourceLocation(Hats.MODID, "hats/hunt_begin"));
-
-                if (advancement != null) {
-                    AdvancementProgress progress = player.getAdvancements().getOrStartProgress(advancement);
-                    if (!progress.isDone()) {
-                        for (String criterion : progress.getRemainingCriteria()) {
-                            player.getAdvancements().award(advancement, criterion);
-                        }
-                    }
-                }
+            if (player != null
+                    && !player.isCreative()
+                    && !player.isSpectator()
+                    && Config.hatMode == HatMode.HUNTING) {
+                HatAdvancements.award(player, "hats/hunt_begin");
             }
         });
+        ctx.setPacketHandled(true);
         return true;
     }
 }

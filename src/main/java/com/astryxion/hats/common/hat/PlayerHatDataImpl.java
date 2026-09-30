@@ -25,6 +25,23 @@ public class PlayerHatDataImpl implements PlayerHatData {
     }
 
     @Override
+    public void grantHat(ResourceLocation hatId) {
+        if (hatId != null) {
+            unlockedHats.add(hatId);
+        }
+    }
+
+    @Override
+    public void revokeHat(ResourceLocation hatId) {
+        if (hatId != null) {
+            unlockedHats.remove(hatId);
+            if (hatId.equals(equippedHat)) {
+                equippedHat = null;
+            }
+        }
+    }
+
+    @Override
     public boolean hasHat(ResourceLocation hatId) {
         if (Config.hatMode == HatMode.COSMETIC) {
             return true;
