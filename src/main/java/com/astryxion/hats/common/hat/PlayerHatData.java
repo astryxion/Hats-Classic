@@ -17,6 +17,16 @@ public interface PlayerHatData {
     void unlockHat(Identifier hatId);
 
     /**
+     * Always add a hat to the unlock set (used by trades, even in cosmetic mode).
+     */
+    void grantHat(Identifier hatId);
+
+    /**
+     * Always remove a hat from the unlock set (used by trades).
+     */
+    void revokeHat(Identifier hatId);
+
+    /**
      * Check if a hat is unlocked
      */
     boolean hasHat(Identifier hatId);

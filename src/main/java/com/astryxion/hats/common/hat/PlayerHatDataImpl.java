@@ -24,6 +24,23 @@ public class PlayerHatDataImpl implements PlayerHatData {
     }
 
     @Override
+    public void grantHat(Identifier hatId) {
+        if (hatId != null) {
+            unlockedHats.add(hatId);
+        }
+    }
+
+    @Override
+    public void revokeHat(Identifier hatId) {
+        if (hatId != null) {
+            unlockedHats.remove(hatId);
+            if (hatId.equals(equippedHat)) {
+                equippedHat = null;
+            }
+        }
+    }
+
+    @Override
     public boolean hasHat(Identifier hatId) {
         if (Config.hatMode == HatMode.COSMETIC) {
             return true;
@@ -65,7 +82,6 @@ public class PlayerHatDataImpl implements PlayerHatData {
 
     @Override
     public void copyFrom(PlayerHatData other) {
-        if (other == this) return;
         this.unlockedHats.clear();
         this.unlockedHats.addAll(other.getUnlockedHats());
         this.equippedHat = other.getEquippedHat();
@@ -79,7 +95,7 @@ public class PlayerHatDataImpl implements PlayerHatData {
         ListTag list = new ListTag();
 
         for (Identifier hatId : unlockedHats) {
-            list.add(StringTag.valueOf(hatId.toString()));
+            list.add(list.size(), StringTag.valueOf(hatId.toString()));
         }
         nbt.put("UnlockedHats", list);
 
@@ -97,12 +113,19 @@ public class PlayerHatDataImpl implements PlayerHatData {
         unlockedHats.clear();
         ListTag list = nbt.getListOrEmpty("UnlockedHats");
         for (int i = 0; i < list.size(); i++) {
-            list.get(i).asString().ifPresent(s -> unlockedHats.add(Identifier.parse(s)));
+            String raw = list.getStringOr(i, "");
+            if (!raw.isEmpty()) {
+                unlockedHats.add(Identifier.parse(raw));
+            }
         }
 
-        this.equippedHat = nbt.getString("EquippedHat").map(Identifier::parse).orElse(null);
+        String equipped = nbt.getStringOr("EquippedHat", "");
+        if (!equipped.isEmpty()) {
+            this.equippedHat = Identifier.parse(equipped);
+        } else {
+            this.equippedHat = null;
+        }
 
-        // 🔧 Load from disk (defaults to false if tag doesn't exist)
-        this.seenWelcome = nbt.getBoolean("SeenWelcome").orElse(false);
+        this.seenWelcome = nbt.getBooleanOr("SeenWelcome", false);
     }
 }

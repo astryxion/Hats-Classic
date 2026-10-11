@@ -1,0 +1,26 @@
+{
+  "parent": "hats:hats/trendsetter",
+  "display": {
+    "icon": {
+      "id": "hats:adv_icon_colourise"
+    },
+    "title": {
+      "translate": "hats.advancement.colouriseHat.title"
+    },
+    "description": {
+      "translate": "hats.advancement.colouriseHat.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "unlock_via_code": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "rewards": {
+    "experience": 50
+  }
+}

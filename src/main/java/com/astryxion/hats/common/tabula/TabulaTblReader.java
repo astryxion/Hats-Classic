@@ -1,0 +1,186 @@
+package com.astryxion.hats.common.tabula;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+public final class TabulaTblReader {
+
+    private static final String MODEL_ENTRY = "model.json";
+    private static final String TEXTURE_ENTRY = "texture.png";
+
+    private TabulaTblReader() {}
+
+    public static TabulaHatModelData readModel(Path tbl) throws IOException {
+        try (InputStream in = Files.newInputStream(tbl)) {
+            return readModel(in, tbl.getFileName().toString());
+        }
+    }
+
+    public static TabulaHatModelData readModel(InputStream in) throws IOException {
+        return readModel(in, "model");
+    }
+
+    private static TabulaHatModelData readModel(InputStream in, String name) throws IOException {
+        try (ZipInputStream zip = new ZipInputStream(in)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (MODEL_ENTRY.equals(entry.getName())) {
+                    return parseModel(zip);
+                }
+            }
+        }
+        throw new IOException("No model.json in " + name);
+    }
+
+    public static byte[] readTexture(Path tbl) throws IOException {
+        try (InputStream in = Files.newInputStream(tbl)) {
+            return readTexture(in, tbl.getFileName().toString());
+        }
+    }
+
+    public static byte[] readTexture(InputStream in) throws IOException {
+        return readTexture(in, "model");
+    }
+
+    private static byte[] readTexture(InputStream in, String name) throws IOException {
+        try (ZipInputStream zip = new ZipInputStream(in)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (TEXTURE_ENTRY.equals(entry.getName())) {
+                    return zip.readAllBytes();
+                }
+            }
+        }
+        throw new IOException("No texture.png in " + name);
+    }
+
+    public static List<String> readNotes(Path tbl) throws IOException {
+        try (InputStream in = Files.newInputStream(tbl)) {
+            return readNotes(in);
+        }
+    }
+
+    public static List<String> readNotes(InputStream in) throws IOException {
+        try (ZipInputStream zip = new ZipInputStream(in)) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (MODEL_ENTRY.equals(entry.getName())) {
+                    return parseNotes(zip);
+                }
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private static TabulaHatModelData parseModel(InputStream in) {
+        JsonObject root = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+
+        TabulaHatModelData model = new TabulaHatModelData();
+        model.textureWidth = getInt(root, "texWidth", 64);
+        model.textureHeight = getInt(root, "texHeight", 64);
+
+        if (root.has("parts")) {
+            for (JsonElement el : root.getAsJsonArray("parts")) {
+                model.roots.add(parsePart(el.getAsJsonObject(), model.textureWidth, model.textureHeight));
+            }
+        }
+
+        return model;
+    }
+
+    private static TabulaHatModelData.Bone parsePart(JsonObject part, int projectTexW, int projectTexH) {
+        TabulaHatModelData.Bone bone = new TabulaHatModelData.Bone();
+
+        bone.name = part.has("name") ? part.get("name").getAsString() : "";
+        bone.pivotX = getFloat(part, "rotPX");
+        bone.pivotY = getFloat(part, "rotPY");
+        bone.pivotZ = getFloat(part, "rotPZ");
+        bone.rotX = (float) Math.toRadians(getFloat(part, "rotAX"));
+        bone.rotY = (float) Math.toRadians(getFloat(part, "rotAY"));
+        bone.rotZ = (float) Math.toRadians(getFloat(part, "rotAZ"));
+        bone.mirror = getBool(part, "mirror");
+        bone.visible = getBoolDef(part, "showModel", true);
+
+        boolean matchProject = getBoolDef(part, "matchProject", true);
+        if (!matchProject) {
+            bone.texW = getInt(part, "texWidth", projectTexW);
+            bone.texH = getInt(part, "texHeight", projectTexH);
+        }
+
+        int partTexU = getInt(part, "texOffX", 0);
+        int partTexV = getInt(part, "texOffY", 0);
+
+        if (part.has("boxes")) {
+            for (JsonElement boxEl : part.getAsJsonArray("boxes")) {
+                JsonObject box = boxEl.getAsJsonObject();
+                TabulaHatModelData.Cube cube = new TabulaHatModelData.Cube();
+
+                cube.originX = getFloat(box, "posX");
+                cube.originY = getFloat(box, "posY");
+                cube.originZ = getFloat(box, "posZ");
+                cube.sizeX = getFloat(box, "dimX");
+                cube.sizeY = getFloat(box, "dimY");
+                cube.sizeZ = getFloat(box, "dimZ");
+                cube.inflateX = getFloat(box, "expandX");
+                cube.inflateY = getFloat(box, "expandY");
+                cube.inflateZ = getFloat(box, "expandZ");
+                cube.mirror = bone.mirror;
+                cube.texU = partTexU + getInt(box, "texOffX", 0);
+                cube.texV = partTexV + getInt(box, "texOffY", 0);
+
+                bone.cubes.add(cube);
+            }
+        }
+
+        if (part.has("children")) {
+            for (JsonElement childEl : part.getAsJsonArray("children")) {
+                if (childEl.isJsonObject()) {
+                    bone.children.add(parsePart(childEl.getAsJsonObject(), projectTexW, projectTexH));
+                }
+            }
+        }
+
+        return bone;
+    }
+
+    private static List<String> parseNotes(InputStream in) {
+        JsonObject root = JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+        if (!root.has("notes")) {
+            return Collections.emptyList();
+        }
+        List<String> notes = new ArrayList<>();
+        for (JsonElement el : root.getAsJsonArray("notes")) {
+            notes.add(el.getAsString());
+        }
+        return notes;
+    }
+
+    private static float getFloat(JsonObject obj, String key) {
+        return obj.has(key) ? obj.get(key).getAsFloat() : 0f;
+    }
+
+    private static int getInt(JsonObject obj, String key, int def) {
+        return obj.has(key) ? obj.get(key).getAsInt() : def;
+    }
+
+    private static boolean getBool(JsonObject obj, String key) {
+        return obj.has(key) && obj.get(key).getAsBoolean();
+    }
+
+    private static boolean getBoolDef(JsonObject obj, String key, boolean def) {
+        return obj.has(key) ? obj.get(key).getAsBoolean() : def;
+    }
+}

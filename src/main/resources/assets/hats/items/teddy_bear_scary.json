@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "hats:item/teddy_bear_scary",
+    "tints": [
+      {
+        "type": "hats:hat_color"
+      }
+    ]
+  },
+  "oversized_in_gui": true
+}

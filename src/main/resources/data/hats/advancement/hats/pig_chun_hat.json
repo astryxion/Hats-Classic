@@ -1,0 +1,26 @@
+{
+  "parent": "hats:hats/rogue_hat",
+  "display": {
+    "icon": {
+      "id": "minecraft:pig_spawn_egg"
+    },
+    "title": {
+      "translate": "hats.advancement.pigChunHat.title"
+    },
+    "description": {
+      "translate": "hats.advancement.pigChunHat.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": true
+  },
+  "criteria": {
+    "unlock_via_code": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "rewards": {
+    "experience": 500
+  }
+}

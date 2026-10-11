@@ -11,49 +11,52 @@ import net.minecraft.world.item.ItemStack;
 
 public class HatToast implements Toast {
 
-    private static final int TOAST_WIDTH = 160;
-    private static final int TOAST_HEIGHT = 32;
-    private static final Identifier TOAST_BACKGROUND_SPRITE = Identifier.fromNamespaceAndPath("minecraft", "toast/recipe");
-    /** Full ARGB for toast title (bright magenta). */
-    private static final int TITLE_COLOR_ARGB = 0xFFFF55FF;
-    /** Opaque black for hat name — avoids fuzzy blended black from styled text + color -1. */
-    private static final int SUBTITLE_COLOR_ARGB = 0xFF000000;
+    private static final long DISPLAY_TIME_MS = 5000L;
+    private static final Identifier BACKGROUND = Identifier.withDefaultNamespace("toast/advancement");
 
     private final ItemStack hatStack;
-    private long displayTime;
+    private Toast.Visibility wantedVisibility = Toast.Visibility.HIDE;
 
     public HatToast(ItemStack stack) {
-        this.hatStack = stack.copy();
+        this.hatStack = stack;
     }
 
     @Override
-    public int width() {
-        return TOAST_WIDTH;
+    public Toast.Visibility getWantedVisibility() {
+        return wantedVisibility;
     }
 
     @Override
-    public int height() {
-        return TOAST_HEIGHT;
+    public void update(ToastManager manager, long fullyVisibleForMs) {
+        wantedVisibility = fullyVisibleForMs >= DISPLAY_TIME_MS ? Toast.Visibility.HIDE : Toast.Visibility.SHOW;
     }
 
     @Override
-    public void update(ToastManager manager, long time) {
-        this.displayTime = time;
-    }
+    public void extractRenderState(GuiGraphicsExtractor gfx, Font font, long fullyVisibleForMs) {
+        gfx.blitSprite(RenderPipelines.GUI_TEXTURED, BACKGROUND, 0, 0, this.width(), this.height());
 
-    @Override
-    public Visibility getWantedVisibility() {
-        return displayTime >= 5000L ? Visibility.HIDE : Visibility.SHOW;
-    }
+        gfx.text(
+                font,
+                Component.literal("Hat Unlocked!"),
+                30,
+                7,
+                0xFFFFFFAA,
+                false
+        );
 
-    @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, Font font, long time) {
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, TOAST_BACKGROUND_SPRITE, 0, 0, TOAST_WIDTH, TOAST_HEIGHT);
+        gfx.text(
+                font,
+                hatStack.getHoverName(),
+                30,
+                18,
+                0xFFFFFFFF,
+                false
+        );
 
-        graphics.text(font, Component.literal("Hat Unlocked!"), 30, 7, TITLE_COLOR_ARGB);
-
-        graphics.text(font, hatStack.getHoverName(), 30, 18, SUBTITLE_COLOR_ARGB);
-
-        graphics.item(hatStack, 8, 8);
+        if (com.astryxion.hats.common.tabula.TabulaHats.isTabula(hatStack)) {
+            com.astryxion.hats.client.tabula.TabulaHatGuiPreview.render(gfx, hatStack, 6, 6, 20);
+        } else {
+            gfx.fakeItem(hatStack, 8, 8);
+        }
     }
 }

@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "hats:item/moreeyes",
+    "tints": [
+      {
+        "type": "hats:hat_color"
+      }
+    ]
+  },
+  "oversized_in_gui": true
+}

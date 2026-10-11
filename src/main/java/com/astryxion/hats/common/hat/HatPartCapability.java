@@ -1,36 +1,29 @@
 package com.astryxion.hats.common.hat;
 
-import net.minecraft.world.entity.LivingEntity;
+import com.astryxion.hats.Hats;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.attachment.AttachmentType;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 /**
- * HatPart storage for LivingEntity (NeoForge – in-memory map)
+ * Holds the HatPart attachment reference ONLY
+ * (No syncing logic here – handled by ServerHatHandler)
  */
 public class HatPartCapability {
 
-    private static final Map<String, HatPart> STORAGE = new ConcurrentHashMap<>();
+    public static final DeferredRegister<AttachmentType<?>> ATTACHMENT_TYPES =
+            DeferredRegister.create(NeoForgeRegistries.Keys.ATTACHMENT_TYPES, Hats.MODID);
 
-    private static String key(LivingEntity entity) {
-        if (entity instanceof net.minecraft.world.entity.player.Player) {
-            return "player:" + entity.getUUID().toString();
-        }
-        return "entity:" + entity.level().dimension().identifier().toString() + ":" + entity.getId();
-    }
+    public static final DeferredHolder<AttachmentType<?>, AttachmentType<HatPart>> HAT_PART =
+            ATTACHMENT_TYPES.register("hat_part", () -> AttachmentType.builder(HatPart::new)
+                    .serialize(new HatPartProvider())
+                    .copyOnDeath()
+                    .build());
 
-    public static HatPart get(LivingEntity entity) {
-        if (entity == null) return null;
-        return STORAGE.get(key(entity));
-    }
-
-    public static HatPart getOrCreate(LivingEntity entity) {
-        if (entity == null) return null;
-        String k = key(entity);
-        return STORAGE.computeIfAbsent(k, x -> new HatPart());
-    }
-
-    public static void remove(LivingEntity entity) {
-        if (entity != null) STORAGE.remove(key(entity));
+    public static void register(IEventBus bus) {
+        ATTACHMENT_TYPES.register(bus);
     }
 }

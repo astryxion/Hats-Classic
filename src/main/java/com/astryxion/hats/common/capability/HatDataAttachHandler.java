@@ -1,16 +1,19 @@
 package com.astryxion.hats.common.capability;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
-import net.minecraft.resources.Identifier;
+
+import net.minecraft.world.entity.Entity;
 
 /**
- * Player hat data is provided via HatDataCapability.get(Player) (NeoForge storage).
- * No capability attachment; data is stored in SavedData and synced by packet.
+ * Used to attach a second {@code hat_data_v2} provider. That second copy is
+ * why trades never saved. Left in place so the event class stays registered
+ * but it must not attach another {@code HAT_DATA}.
  */
-public final class HatDataAttachHandler {
+@EventBusSubscriber(modid = Hats.MODID)
+public class HatDataAttachHandler {
 
-    public static final Identifier HAT_DATA_ID =
-            Identifier.fromNamespaceAndPath(Hats.MODID, "hat_data_v2");
-
-    private HatDataAttachHandler() {}
+    public static void attachCapabilities(Entity entity) {
+    }
 }

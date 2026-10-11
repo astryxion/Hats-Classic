@@ -1,0 +1,23 @@
+{
+  "parent": "hats:hats/collect_50",
+  "display": {
+    "icon": {
+      "id": "hats:adv_icon_hat100"
+    },
+    "title": {
+      "translate": "hats.advancement.collect100.title"
+    },
+    "description": {
+      "translate": "hats.advancement.collect100.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "unlock_via_code": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

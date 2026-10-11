@@ -1,26 +1,28 @@
 package com.astryxion.hats.common.capability;
 
-import com.astryxion.hats.common.hat.PlayerHatData;
 import com.astryxion.hats.common.hat.PlayerHatDataImpl;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
 /**
- * NeoForge: PlayerHatData is accessed via HatDataCapability.get(Player).
- * This class is kept for reference; serialization is in PlayerHatDataImpl.
+ * Persists {@link PlayerHatDataImpl} with the same compound the packets and GUI already read.
  */
-public final class HatDataProvider {
+public class HatDataProvider implements IAttachmentSerializer<PlayerHatDataImpl> {
 
-    public static PlayerHatData createNew() {
-        return new PlayerHatDataImpl();
+    @Override
+    public PlayerHatDataImpl read(IAttachmentHolder holder, ValueInput input) {
+        PlayerHatDataImpl data = new PlayerHatDataImpl();
+        input.read(MapCodec.assumeMapUnsafe(CompoundTag.CODEC)).ifPresent(data::deserializeNBT);
+        return data;
     }
 
-    public static CompoundTag serialize(PlayerHatData data) {
-        return data.serializeNBT();
+    @Override
+    public boolean write(PlayerHatDataImpl data, ValueOutput output) {
+        output.store(data.serializeNBT());
+        return true;
     }
-
-    public static void deserialize(PlayerHatData data, CompoundTag tag) {
-        data.deserializeNBT(tag);
-    }
-
-    private HatDataProvider() {}
 }

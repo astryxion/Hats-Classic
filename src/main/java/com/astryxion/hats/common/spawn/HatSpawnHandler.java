@@ -1,92 +1,100 @@
 package com.astryxion.hats.common.spawn;
 
-import com.astryxion.hats.Config;
-import com.astryxion.hats.common.hat.HatManager;
-import com.astryxion.hats.common.hat.HatPart;
-import com.astryxion.hats.common.registry.HatItemRegistry;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EquipmentSlot;
+import com.astryxion.hats.Hats;
+import com.astryxion.hats.Config;
+import com.astryxion.hats.common.hat.HatAccessories;
+import com.astryxion.hats.common.hat.HatContributor;
+import com.astryxion.hats.common.hat.HatManager;
+import com.astryxion.hats.common.registry.HatItemRegistry;
+import com.astryxion.hats.common.tabula.TabulaHatDefinition;
+import com.astryxion.hats.common.tabula.TabulaHats;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.EntityTypeTags;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatSpawnHandler {
+
+    public static void onFirstTick(LivingEntity entity) {
+    }
 
     private static final Random RANDOM = new Random();
 
-    /** Tracks which entities have already had a hat roll (per dimension+UUID) */
-    private static final Set<String> HAT_ROLLED = ConcurrentHashMap.newKeySet();
+    /** Persistent lock so mobs are evaluated ONCE only */
+    private static final String HAT_ROLLED_KEY = "HatsModHatRolled";
 
-    /** Tracks which entities have had spawn logic run (used when entity-join mixin is not available) */
-    private static final Set<String> JOIN_PROCESSED = ConcurrentHashMap.newKeySet();
-
-    /**
-     * Call once per entity (e.g. first tick). Runs onEntityJoinWorld only the first time.
-     */
-    public static void onFirstTick(LivingEntity living) {
-        String key = living.level().dimension().identifier().toString() + ":" + living.getUUID();
-        if (!JOIN_PROCESSED.add(key)) return;
-        onEntityJoinWorld(living);
+    @SubscribeEvent
+    public static void onLivingTick(EntityTickEvent.Post event) {
+        if (!(event.getEntity() instanceof LivingEntity entity)) {
+            return;
+        }
+        if (entity.level().isClientSide()) {
+            return;
+        }
+        HatManager.migrateAndStripCourierHat(entity);
+        MobHatPolicy.apply(entity);
+        clearUndeadSunlightFire(entity);
     }
 
-    /**
-     * Called when an entity is in the world (from first-tick or entity-join).
-     */
-    public static void onEntityJoinWorld(LivingEntity living) {
+    // ==========================
+    // MAIN SPAWN / LOAD EVENT
+    // ==========================
 
-        if (!Config.enableHats || !Config.enableMobHats)
+    @SubscribeEvent
+    public static void onEntitySpawn(EntityJoinLevelEvent event) {
+
+        if (event.getLevel().isClientSide())
             return;
 
-        if (living.getType() == EntityType.COW) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.SHEEP) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.PIG) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.CHICKEN) tryEquipRandomHat(living);
+        Entity entity = event.getEntity();
 
-        if (living.getType() == EntityType.ZOMBIE) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.ZOMBIE_VILLAGER) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.SKELETON) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.STRAY) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.WITHER_SKELETON) tryEquipRandomHat(living);
+        if (!(entity instanceof LivingEntity living))
+            return;
 
-        if (living.getType() == EntityType.HUSK) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.DROWNED) tryEquipRandomHat(living);
+        MobHatPolicy.apply(living);
 
-        if (living.getType() == EntityType.CREEPER) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.ENDERMAN) tryEquipRandomHat(living);
+        if (!Config.canMobSpawnWithHats(living.getType()))
+            return;
 
-        if (living.getType() == EntityType.PILLAGER) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.VINDICATOR) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.EVOKER) tryEquipRandomHat(living);
-
-        if (living.getType() == EntityType.VILLAGER) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.WANDERING_TRADER) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.IRON_GOLEM) tryEquipRandomHat(living);
-
-        if (living.getType() == EntityType.PIGLIN) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.PIGLIN_BRUTE) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.ZOMBIFIED_PIGLIN) tryEquipRandomHat(living);
-
-        if (living.getType() == EntityType.SQUID) tryEquipRandomHat(living);
-        if (living.getType() == EntityType.GLOW_SQUID) tryEquipRandomHat(living);
+        tryEquipRandomHat(living);
     }
+
+    // ==========================
+    // RANDOM HAT LOGIC (ONE-TIME)
+    // ==========================
 
     private static void tryEquipRandomHat(LivingEntity entity) {
-        String key = entity.level().dimension().identifier().toString() + ":" + entity.getUUID();
 
-        if (!HAT_ROLLED.add(key))
+        var data = entity.getPersistentData();
+
+        // HARD LOCK: if evaluated once, never reroll
+        if (data.getBooleanOr(HAT_ROLLED_KEY, false))
             return;
 
+        // Mark evaluated immediately (win or lose)
+        data.putBoolean(HAT_ROLLED_KEY, true);
+
+        // Respect existing hats
         if (HatManager.hasHat(entity))
             return;
 
-        List<Item> hats = HatItemRegistry.getAllHats();
-
+        List<Item> hats = spawnCandidateHats();
         if (hats.isEmpty())
             return;
 
@@ -94,13 +102,49 @@ public class HatSpawnHandler {
             return;
 
         Item randomHat = hats.get(RANDOM.nextInt(hats.size()));
-        ItemStack hatStack = new ItemStack(randomHat);
-
-        HatPart part = HatManager.get(entity);
-        if (part != null) {
-            part.setHatStack(hatStack.copy());
+        ItemStack stack = new ItemStack(randomHat);
+        TabulaHatDefinition tabula = TabulaHats.from(stack);
+        if (tabula != null && !tabula.accessories.isEmpty()) {
+            HatAccessories.applyRandom(stack, tabula, RANDOM);
         }
+        HatManager.setHatStack(entity, stack);
+    }
 
-        entity.setItemSlot(EquipmentSlot.HEAD, hatStack);
+    private static List<Item> spawnCandidateHats() {
+        List<Item> hats = new ArrayList<>();
+        for (var reg : HatItemRegistry.ALL_HATS) {
+            Item item = reg.get();
+            if (Config.disableContributorHats && HatContributor.isContributor(item)) {
+                continue;
+            }
+            hats.add(item);
+        }
+        return hats;
+    }
+
+    /**
+     * Renewed parity: hatted undead that would burn in sunlight have fire cleared.
+     */
+    private static void clearUndeadSunlightFire(LivingEntity entity) {
+        if (!Config.preventUndeadFire) {
+            return;
+        }
+        if (!(entity.level() instanceof ServerLevel level) || !level.isBrightOutside()) {
+            return;
+        }
+        if (!entity.getType().builtInRegistryHolder().is(EntityTypeTags.UNDEAD)) {
+            return;
+        }
+        if (!HatManager.hasHat(entity) || !entity.isOnFire()) {
+            return;
+        }
+        if (entity.isInWaterOrRain() || entity.isInPowderSnow) {
+            return;
+        }
+        BlockPos eyePos = BlockPos.containing(entity.getX(), entity.getEyeY(), entity.getZ());
+        if (!level.canSeeSky(eyePos)) {
+            return;
+        }
+        entity.clearFire();
     }
 }

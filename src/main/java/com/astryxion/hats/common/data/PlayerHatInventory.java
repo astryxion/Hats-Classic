@@ -1,18 +1,13 @@
 package com.astryxion.hats.common.data;
 
-import com.astryxion.hats.Hats;
-import com.mojang.serialization.Codec;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
+import com.mojang.serialization.Codec;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -26,13 +21,18 @@ import java.util.*;
  */
 public class PlayerHatInventory extends SavedData {
 
-    public static final SavedDataType<PlayerHatInventory> TYPE = new SavedDataType<>(
-            Identifier.fromNamespaceAndPath(Hats.MODID, "hats_inventory"),
-            PlayerHatInventory::new,
-            PlayerHatInventory.CODEC);
+    private static final String DATA_NAME = "hats_inventory";
 
-    public static final Codec<PlayerHatInventory> CODEC = ExtraCodecs.converter(NbtOps.INSTANCE)
-            .xmap(PlayerHatInventory::decode, PlayerHatInventory::encodeRoot);
+    public static final Codec<PlayerHatInventory> CODEC = CompoundTag.CODEC.xmap(
+            PlayerHatInventory::load,
+            data -> data.save(new CompoundTag())
+    );
+
+    public static final SavedDataType<PlayerHatInventory> TYPE = new SavedDataType<>(
+            Identifier.fromNamespaceAndPath("hats", DATA_NAME),
+            PlayerHatInventory::new,
+            CODEC
+    );
 
     // ============================
     // Per player data
@@ -46,43 +46,8 @@ public class PlayerHatInventory extends SavedData {
     // ============================
 
     public static PlayerHatInventory get(ServerLevel level) {
+
         return level.getDataStorage().computeIfAbsent(TYPE);
-    }
-
-    public static PlayerHatInventory decode(Tag tag) {
-        return load((CompoundTag) tag);
-    }
-
-    public CompoundTag encodeRoot() {
-        CompoundTag tag = new CompoundTag();
-        ListTag playersList = new ListTag();
-
-        for (UUID uuid : unlockedHats.keySet()) {
-            CompoundTag playerTag = new CompoundTag();
-            playerTag.putString("Player", uuid.toString());
-
-            ListTag hatsTag = new ListTag();
-            for (Item hat : unlockedHats.get(uuid)) {
-                Identifier id = BuiltInRegistries.ITEM.getKey(hat);
-                if (id != null) {
-                    hatsTag.add(StringTag.valueOf(id.toString()));
-                }
-            }
-            playerTag.put("Unlocked", hatsTag);
-
-            Item equipped = equippedHat.get(uuid);
-            if (equipped != null && equipped != Items.AIR) {
-                Identifier eqId = BuiltInRegistries.ITEM.getKey(equipped);
-                if (eqId != null) {
-                    playerTag.putString("Equipped", eqId.toString());
-                }
-            }
-
-            playersList.add(playerTag);
-        }
-
-        tag.put("Players", playersList);
-        return tag;
     }
 
     // ============================
@@ -97,7 +62,7 @@ public class PlayerHatInventory extends SavedData {
                 .computeIfAbsent(player, id -> new HashSet<>())
                 .add(hat);
 
-        setDirty(true);
+        setDirty();
     }
 
     public boolean hasHatUnlocked(UUID player, Item hat) {
@@ -125,7 +90,7 @@ public class PlayerHatInventory extends SavedData {
             equippedHat.put(player, hat);
         }
 
-        setDirty(true);
+        setDirty();
     }
 
     public Item getEquippedHat(UUID player) {
@@ -136,7 +101,50 @@ public class PlayerHatInventory extends SavedData {
     public void clearEquippedHat(UUID player) {
 
         equippedHat.remove(player);
-        setDirty(true);
+        setDirty();
+    }
+
+    // ============================
+    // Saving
+    // ============================
+
+    public CompoundTag save(CompoundTag tag) {
+
+        ListTag playersList = new ListTag();
+
+        for (UUID uuid : unlockedHats.keySet()) {
+
+            CompoundTag playerTag = new CompoundTag();
+            playerTag.putIntArray("Player", UUIDUtil.uuidToIntArray(uuid));
+
+            ListTag hatsTag = new ListTag();
+
+            for (Item hat : unlockedHats.get(uuid)) {
+
+                Identifier id = BuiltInRegistries.ITEM.getKey(hat);
+                if (id != null) {
+                    hatsTag.add(hatsTag.size(), StringTag.valueOf(id.toString()));
+                }
+            }
+
+            playerTag.put("Unlocked", hatsTag);
+
+            Item equipped = equippedHat.get(uuid);
+
+            if (equipped != null && equipped != Items.AIR) {
+
+                Identifier eqId = BuiltInRegistries.ITEM.getKey(equipped);
+                if (eqId != null) {
+                    playerTag.putString("Equipped", eqId.toString());
+                }
+            }
+
+            playersList.add(playersList.size(), playerTag);
+        }
+
+        tag.put("Players", playersList);
+
+        return tag;
     }
 
     // ============================
@@ -151,17 +159,25 @@ public class PlayerHatInventory extends SavedData {
 
         for (int i = 0; i < playersList.size(); i++) {
 
-            CompoundTag playerTag = playersList.getCompound(i).orElseThrow();
-
-            UUID uuid = UUID.fromString(playerTag.getString("Player").orElseThrow());
+            CompoundTag playerTag = playersList.getCompoundOrEmpty(i);
+            int[] rawUuid = playerTag.getIntArray("Player").orElse(null);
+            if (rawUuid == null || rawUuid.length != 4) {
+                continue;
+            }
+            UUID uuid = UUIDUtil.uuidFromIntArray(rawUuid);
 
             Set<Item> hats = new HashSet<>();
+
             ListTag hatsTag = playerTag.getListOrEmpty("Unlocked");
 
             for (int j = 0; j < hatsTag.size(); j++) {
 
-                Identifier id = Identifier.parse(hatsTag.getString(j).orElseThrow());
-                Item item = BuiltInRegistries.ITEM.getValue(ResourceKey.create(Registries.ITEM, id));
+                String idRaw = hatsTag.getStringOr(j, "");
+                if (idRaw.isEmpty()) {
+                    continue;
+                }
+                Identifier id = Identifier.parse(idRaw);
+                Item item = BuiltInRegistries.ITEM.getValue(id);
 
                 if (item != null) {
                     hats.add(item);
@@ -170,10 +186,11 @@ public class PlayerHatInventory extends SavedData {
 
             data.unlockedHats.put(uuid, hats);
 
-            if (playerTag.getString("Equipped").isPresent()) {
+            String equipped = playerTag.getStringOr("Equipped", "");
+            if (!equipped.isEmpty()) {
 
-                Identifier id = Identifier.parse(playerTag.getString("Equipped").orElseThrow());
-                Item item = BuiltInRegistries.ITEM.getValue(ResourceKey.create(Registries.ITEM, id));
+                Identifier id = Identifier.parse(equipped);
+                Item item = BuiltInRegistries.ITEM.getValue(id);
 
                 if (item != null) {
                     data.equippedHat.put(uuid, item);
