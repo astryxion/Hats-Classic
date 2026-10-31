@@ -37,7 +37,7 @@ public class Hats {
         // =========================
 
         modContainer.registerConfig(
-                ModConfig.Type.COMMON,
+                ModConfig.Type.LOCAL,
                 Config.SPEC
         );
 

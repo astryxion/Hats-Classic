@@ -1,11 +1,10 @@
 package com.astryxion.hats.mixin;
 
 import com.astryxion.hats.common.hat.HatManager;
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.renderer.ItemInHandRenderer;
-import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,29 +12,26 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Vanilla {@code CustomHeadLayer} draws HEAD-slot items through
- * {@link ItemInHandRenderer}. HatRenderLayer submits the hat itself,
- * so cancelling here drops the duplicate villager/illager hat without hiding ours.
+ * Vanilla draws HEAD-slot items from the living render state's head item,
+ * which {@code CustomHeadLayer} submits. HatRenderLayer submits the hat itself,
+ * so clearing that state drops the duplicate villager/illager hat without hiding ours.
  */
-@Mixin(ItemInHandRenderer.class)
+@Mixin(LivingEntityRenderer.class)
 public class ItemInHandRendererMixin {
 
     @Inject(
-            method = "renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V",
-            at = @At("HEAD"),
-            cancellable = true
+            method = "extractRenderState(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;F)V",
+            at = @At("RETURN")
     )
     private void hats$skipModHatHeadItems(
             LivingEntity entity,
-            ItemStack stack,
-            ItemDisplayContext displayContext,
-            PoseStack poseStack,
-            SubmitNodeCollector collector,
-            int packedLight,
+            LivingEntityRenderState state,
+            float partialTicks,
             CallbackInfo ci
     ) {
-        if (displayContext == ItemDisplayContext.HEAD && HatManager.isModHat(stack)) {
-            ci.cancel();
+        ItemStack stack = entity.getItemBySlot(EquipmentSlot.HEAD);
+        if (HatManager.isModHat(stack)) {
+            state.headItem.clear();
         }
     }
 }

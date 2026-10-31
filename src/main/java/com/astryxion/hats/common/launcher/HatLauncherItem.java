@@ -20,6 +20,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -153,7 +154,7 @@ public class HatLauncherItem extends Item {
             return false;
         }
         if (entityHit.getEntity() instanceof LivingEntity living) {
-            player.swing(hand, true);
+            player.swing(hand, SwingAnimation.DEFAULT, true);
             return stripHat(player, living);
         }
         return false;

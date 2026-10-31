@@ -53,7 +53,7 @@ public class HatStandRenderer extends EntityRenderer<HatStandEntity, HatStandRen
     public void submit(State state, PoseStack stack, SubmitNodeCollector collector, CameraRenderState camera) {
         stack.pushPose();
         stack.translate(0, 1.5D, 0);
-        stack.mulPose(Axis.YP.rotationDegrees(180.0F - state.yRot));
+        stack.rotate(Axis.YP.rotationDegrees(180.0F - state.yRot));
         stack.scale(-1, -1, 1);
         model.setupAnim(state);
         collector.submitModel(
@@ -63,8 +63,7 @@ public class HatStandRenderer extends EntityRenderer<HatStandEntity, HatStandRen
                 RenderTypes.entityCutout(TEXTURE),
                 state.lightCoords,
                 OverlayTexture.NO_OVERLAY,
-                state.outlineColor,
-                null
+                state.outlineColor
         );
 
         ItemStack hat = state.hat;
@@ -78,7 +77,7 @@ public class HatStandRenderer extends EntityRenderer<HatStandEntity, HatStandRen
             } else {
                 stack.scale(0.875F, 0.875F, 0.875F);
                 stack.translate(0, -0.25F, 0);
-                stack.mulPose(Axis.YP.rotationDegrees(180));
+                stack.rotate(Axis.YP.rotationDegrees(180));
                 stack.scale(0.625F, -0.625F, -0.625F);
                 HatRenderLayer.submitHatItem(stack, collector, hat, state.lightCoords, OverlayTexture.NO_OVERLAY);
             }

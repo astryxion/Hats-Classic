@@ -45,8 +45,8 @@ public class HatEntityRenderer extends EntityRenderer<HatEntity, HatEntityRender
         }
         poseStack.pushPose();
         poseStack.translate(0.0D, 0.25D, 0.0D);
-        poseStack.mulPose(Axis.YP.rotationDegrees(state.rotY));
-        poseStack.mulPose(Axis.ZP.rotationDegrees(state.rotX));
+        poseStack.rotate(Axis.YP.rotationDegrees(state.rotY));
+        poseStack.rotate(Axis.ZP.rotationDegrees(state.rotX));
         poseStack.scale(0.75F, 0.75F, 0.75F);
         HatRenderLayer.submitHatItem(poseStack, collector, state.hat, state.lightCoords, OverlayTexture.NO_OVERLAY, state.seed);
         poseStack.popPose();

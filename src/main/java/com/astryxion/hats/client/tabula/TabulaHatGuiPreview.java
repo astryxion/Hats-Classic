@@ -77,7 +77,7 @@ public final class TabulaHatGuiPreview {
         @Override
         protected void renderToTexture(PreviewState state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector) {
             poseStack.scale(1.0F, 1.0F, -1.0F);
-            poseStack.mulPose(Axis.YP.rotationDegrees(205.0F));
+            poseStack.rotate(Axis.YP.rotationDegrees(205.0F));
             TabulaHatRenderer.render(poseStack, submitNodeCollector, 0xF000F0, OverlayTexture.NO_OVERLAY, state.stack(), 1.0F);
         }
 

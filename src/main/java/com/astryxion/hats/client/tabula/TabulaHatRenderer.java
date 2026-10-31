@@ -127,7 +127,7 @@ public final class TabulaHatRenderer {
         collector.submitCustomGeometry(poseStack, renderType, (pose, consumer) ->
                 drawRoots(pose, consumer, model, hidden, rgba, light, overlay));
         if (foil) {
-            collector.submitCustomGeometry(poseStack, RenderTypes.entityGlint(), (pose, consumer) ->
+            collector.submitCustomGeometry(poseStack, RenderTypes.patternedShieldGlint(), (pose, consumer) ->
                     drawRoots(pose, consumer, model, hidden, rgba, light, overlay));
         }
     }
@@ -156,9 +156,9 @@ public final class TabulaHatRenderer {
 
         poseStack.pushPose();
         poseStack.translate(bone.pivotX / 16f, bone.pivotY / 16f, bone.pivotZ / 16f);
-        poseStack.mulPose(Axis.ZP.rotation(bone.rotZ));
-        poseStack.mulPose(Axis.YP.rotation(bone.rotY));
-        poseStack.mulPose(Axis.XP.rotation(bone.rotX));
+        poseStack.rotate(Axis.ZP.rotation(bone.rotZ));
+        poseStack.rotate(Axis.YP.rotation(bone.rotY));
+        poseStack.rotate(Axis.XP.rotation(bone.rotX));
 
         if (!bone.cubes.isEmpty()) {
             int boneTexW = bone.texW > 0 ? bone.texW : texW;

@@ -152,14 +152,14 @@ public class HatLauncherItemRenderer implements ItemModel, SpecialModelRenderer<
         poseStack.pushPose();
         poseStack.translate(0.0F, 0.0F, -0.14F);
         poseStack.scale(0.15F, 0.15F, 0.15F);
-        poseStack.mulPose(Axis.ZP.rotation(leftHand ? -0.7853982F : 0.7853982F));
+        poseStack.rotate(Axis.ZP.rotation(leftHand ? -0.7853982F : 0.7853982F));
         poseStack.translate(
                 (leftHand ? 1.75F : -1.75F)
                         + (float) Math.sin(Math.toRadians(ticks / 41.0F * 180.0F)) * (leftHand ? 0.35F : -0.35F),
                 0.0F,
                 0.0F);
-        poseStack.mulPose(Axis.YP.rotationDegrees((float) Math.sin(Math.toRadians(ticks / 37.0F * 180.0F)) * 180.0F));
-        poseStack.mulPose(Axis.XP.rotationDegrees((float) Math.sin(Math.toRadians(ticks / 87.0F * 180.0F)) * 180.0F));
+        poseStack.rotate(Axis.YP.rotationDegrees((float) Math.sin(Math.toRadians(ticks / 37.0F * 180.0F)) * 180.0F));
+        poseStack.rotate(Axis.XP.rotationDegrees((float) Math.sin(Math.toRadians(ticks / 87.0F * 180.0F)) * 180.0F));
         ItemStackRenderState magma = new ItemStackRenderState();
         minecraft.getItemModelResolver().updateForTopItem(magma, magmaStack(), ItemDisplayContext.FIXED, minecraft.level, null, 0);
         magma.submit(poseStack, collector, light, overlay, 0);
@@ -220,9 +220,9 @@ public class HatLauncherItemRenderer implements ItemModel, SpecialModelRenderer<
         if (item instanceof HatItem hatItem && hatItem.isTabula()) {
             poseStack.translate(0.0F, 0.0F, -0.0625F);
             poseStack.scale(0.1876F, 0.1876F, 0.1876F);
-            poseStack.mulPose(Axis.ZP.rotation(leftHand ? -0.7853982F : 0.7853982F));
+            poseStack.rotate(Axis.ZP.rotation(leftHand ? -0.7853982F : 0.7853982F));
             poseStack.translate(0.0F, -1.1875F, 0.0F);
-            poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+            poseStack.rotate(Axis.YP.rotationDegrees(180.0F));
             TabulaHatRenderer.render(poseStack, collector, light, overlay, hat, 1.0F);
         } else {
             heads.barrel.translateAndRotate(poseStack);
@@ -241,7 +241,7 @@ public class HatLauncherItemRenderer implements ItemModel, SpecialModelRenderer<
                     (minZ + maxZ) / 2.0F / 16.0F);
             float sit = width / 8.0F;
             poseStack.scale(sit, sit, sit);
-            poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
+            poseStack.rotate(Axis.XP.rotationDegrees(180.0F));
             poseStack.scale(-0.625F, 0.625F, -0.625F);
             HatRenderLayer.submitHatItem(poseStack, collector, hat, light, overlay);
         }

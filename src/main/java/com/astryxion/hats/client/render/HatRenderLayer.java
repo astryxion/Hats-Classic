@@ -29,6 +29,7 @@ import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.cuboid.ItemTransform;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.resources.model.geometry.ItemQuads;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.util.context.ContextKey;
@@ -175,7 +176,7 @@ public class HatRenderLayer<S extends LivingEntityRenderState, M extends EntityM
             }
             applySkinLayersClearance(poseStack, entity);
             if (back) {
-                poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+                poseStack.rotate(Axis.YP.rotationDegrees(180.0F));
             }
             TabulaHatPlacement.applyZFight(poseStack);
             TabulaHatRenderer.render(
@@ -261,7 +262,7 @@ public class HatRenderLayer<S extends LivingEntityRenderState, M extends EntityM
         }
         float multiplier = Math.max(0, alpha) / 255.0F;
         for (ItemStackRenderState.LayerRenderState layer : itemLayers(state)) {
-            List<BakedQuad> quads = layer.prepareQuadList();
+            List<BakedQuad> quads = quadsOf(layer);
             if (quads.isEmpty()) {
                 continue;
             }
@@ -338,6 +339,12 @@ public class HatRenderLayer<S extends LivingEntityRenderState, M extends EntityM
         }
 
         @Override
+        public VertexConsumer setUv3(float u, float v) {
+            delegate.setUv3(u, v);
+            return this;
+        }
+
+        @Override
         public VertexConsumer setNormal(float x, float y, float z) {
             delegate.setNormal(x, y, z);
             return this;
@@ -394,6 +401,19 @@ public class HatRenderLayer<S extends LivingEntityRenderState, M extends EntityM
         } catch (ReflectiveOperationException ignored) {
         }
         return ItemTransform.NO_TRANSFORM;
+    }
+
+    private static List<BakedQuad> quadsOf(ItemStackRenderState.LayerRenderState layer) {
+        try {
+            Field field = ItemStackRenderState.LayerRenderState.class.getDeclaredField("quads");
+            field.setAccessible(true);
+            Object value = field.get(layer);
+            if (value instanceof ItemQuads itemQuads) {
+                return itemQuads.all();
+            }
+        } catch (ReflectiveOperationException ignored) {
+        }
+        return List.of();
     }
 
     /**
@@ -901,7 +921,7 @@ public class HatRenderLayer<S extends LivingEntityRenderState, M extends EntityM
      */
     private static void applyHatItemOrientation(PoseStack poseStack, boolean faceTail) {
         if (!faceTail) {
-            poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+            poseStack.rotate(Axis.YP.rotationDegrees(180.0F));
         }
         poseStack.scale(ITEM_HEAD_SCALE, -ITEM_HEAD_SCALE, -ITEM_HEAD_SCALE);
     }
@@ -966,7 +986,7 @@ public class HatRenderLayer<S extends LivingEntityRenderState, M extends EntityM
     private static List<org.joml.Vector3f> bakedVertices(List<ItemStackRenderState.LayerRenderState> layers) {
         List<org.joml.Vector3f> verts = new ArrayList<>();
         for (ItemStackRenderState.LayerRenderState layer : layers) {
-            collectVertices(layer.prepareQuadList(), verts);
+            collectVertices(quadsOf(layer), verts);
         }
         return verts;
     }

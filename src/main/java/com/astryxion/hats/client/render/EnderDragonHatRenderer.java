@@ -152,7 +152,7 @@ public final class EnderDragonHatRenderer {
             TabulaHatRenderer.render(
                     poseStack, collector, packedLight, OverlayTexture.NO_OVERLAY, hat, geometryScale);
         } else {
-            poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+            poseStack.rotate(Axis.YP.rotationDegrees(180.0F));
             poseStack.scale(ITEM_HEAD_SCALE, -ITEM_HEAD_SCALE, -ITEM_HEAD_SCALE);
             HatRenderLayer.submitHatItem(poseStack, collector, dragon, hat, packedLight, OverlayTexture.NO_OVERLAY);
         }
