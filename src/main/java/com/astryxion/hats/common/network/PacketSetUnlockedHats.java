@@ -93,12 +93,11 @@ public class PacketSetUnlockedHats {
     }
 
     public static void handle(PacketSetUnlockedHats msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            if (FMLEnvironment.dist != Dist.CLIENT) {
-                return;
-            }
-            applyClient(msg.unlocked, msg.equipped, msg.openMenu, msg.gained, msg.lost, msg.counts);
-        });
+        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
+                "com.astryxion.hats.client.network.HatClientPacketHandlers",
+                "applyUnlockedHats",
+                new Class<?>[]{List.class, ResourceLocation.class, boolean.class, List.class, List.class, List.class},
+                new Object[]{msg.unlocked, msg.equipped, msg.openMenu, msg.gained, msg.lost, msg.counts}));
         ctx.get().setPacketHandled(true);
     }
 
@@ -148,44 +147,11 @@ public class PacketSetUnlockedHats {
         List<Integer> amounts = List.copyOf(counts);
         HatPacketHandler.sendToPlayer(player, new PacketSetUnlockedHats(ids, equipped, openMenu, gainedIds, lostIds, amounts));
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
-            java.util.UUID target = player.getUUID();
-            String targetName = player.getGameProfile().getName();
-            minecraft.execute(() -> {
-                if (minecraft.player == null) {
-                    return;
-                }
-                if (!minecraft.player.getUUID().equals(target)
-                        && !minecraft.player.getGameProfile().getName().equals(targetName)) {
-                    return;
-                }
-                applyClient(ids, equipped, openMenu, gainedIds, lostIds, amounts);
-            });
-        }
-    }
-
-    private static void applyClient(
-            List<ResourceLocation> unlocked,
-            @Nullable ResourceLocation equipped,
-            boolean openMenu,
-            List<ResourceLocation> gained,
-            List<ResourceLocation> lost,
-            List<Integer> counts
-    ) {
-        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
-        com.astryxion.hats.client.hat.ClientHatUnlocks.ensureSeeded(minecraft.player);
-        if (!gained.isEmpty() || !lost.isEmpty()) {
-            com.astryxion.hats.client.hat.ClientHatUnlocks.applySwap(gained, lost);
-        }
-        com.astryxion.hats.client.hat.ClientHatUnlocks.forceSetIfComplete(unlocked, gained, counts);
-        if (minecraft.player != null) {
-            com.astryxion.hats.common.capability.HatDataAccess.replaceUnlocked(
-                    minecraft.player, com.astryxion.hats.client.hat.ClientHatUnlocks.all(), equipped);
-        }
-        if (openMenu) {
-            com.astryxion.hats.client.gui.HatsGui.open();
-        } else {
-            com.astryxion.hats.client.gui.HatsGui.refreshIfOpen();
+            HatPacketHandler.callClient(
+                    "com.astryxion.hats.client.network.HatClientPacketHandlers",
+                    "scheduleUnlockedHats",
+                    new Class<?>[]{List.class, ResourceLocation.class, boolean.class, List.class, List.class, List.class, java.util.UUID.class, String.class},
+                    new Object[]{ids, equipped, openMenu, gainedIds, lostIds, amounts, player.getUUID(), player.getGameProfile().getName()});
         }
     }
 

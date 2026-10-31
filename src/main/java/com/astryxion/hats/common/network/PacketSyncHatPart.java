@@ -1,12 +1,7 @@
 package com.astryxion.hats.common.network;
 
-import com.astryxion.hats.common.hat.HatPartCapability;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -21,6 +16,14 @@ public class PacketSyncHatPart {
         this.tag = tag;
     }
 
+    public int playerId() {
+        return playerId;
+    }
+
+    public CompoundTag tag() {
+        return tag;
+    }
+
     public static void encode(PacketSyncHatPart msg, FriendlyByteBuf buf) {
         buf.writeInt(msg.playerId);
         buf.writeNbt(msg.tag);
@@ -31,16 +34,11 @@ public class PacketSyncHatPart {
     }
 
     public static void handle(PacketSyncHatPart msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() ->
-                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                    var mc = net.minecraft.client.Minecraft.getInstance();
-                    if (mc.level == null) return;
-                    Entity entity = mc.level.getEntity(msg.playerId);
-                    if (entity instanceof LivingEntity living) {
-                        living.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
-                                part.deserializeNBT(msg.tag));
-                    }
-                }));
+        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
+                "com.astryxion.hats.client.network.HatClientPacketHandlers",
+                "handleSyncHatPart",
+                new Class<?>[]{PacketSyncHatPart.class},
+                new Object[]{msg}));
         ctx.get().setPacketHandled(true);
     }
 }

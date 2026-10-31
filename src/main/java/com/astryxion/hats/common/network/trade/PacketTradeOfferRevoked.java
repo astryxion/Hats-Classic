@@ -1,8 +1,8 @@
 package com.astryxion.hats.common.network.trade;
 
+import com.astryxion.hats.common.network.HatPacketHandler;
+
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.UUID;
@@ -29,8 +29,11 @@ public class PacketTradeOfferRevoked {
     }
 
     public static void handle(PacketTradeOfferRevoked msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                com.astryxion.hats.client.trade.ClientTradePackets.onRevoked(msg)));
+        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
+                "com.astryxion.hats.client.trade.ClientTradePackets",
+                "onRevoked",
+                new Class<?>[]{PacketTradeOfferRevoked.class},
+                new Object[]{msg}));
         ctx.get().setPacketHandled(true);
     }
 }

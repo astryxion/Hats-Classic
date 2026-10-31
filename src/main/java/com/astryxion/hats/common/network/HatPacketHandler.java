@@ -156,19 +156,24 @@ public class HatPacketHandler {
      */
     private static void handleHatUnlocked(PacketHatUnlocked msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> {
-            if (FMLEnvironment.dist != Dist.CLIENT) {
-                return;
-            }
-            try {
-                Class.forName(CLIENT_HAT_HANDLERS)
-                        .getMethod("handleHatUnlocked", PacketHatUnlocked.class)
-                        .invoke(null, msg);
-            } catch (Throwable t) {
-                Hats.LOGGER.error("Failed to handle hat unlocked packet on client", t);
-            }
-        });
+        context.enqueueWork(() -> callClient(CLIENT_HAT_HANDLERS, "handleHatUnlocked",
+                new Class<?>[]{PacketHatUnlocked.class}, new Object[]{msg}));
         context.setPacketHandled(true);
+    }
+
+    /**
+     * Loads a client class by name only when this process is a physical client.
+     * A direct reference would put {@code LocalPlayer} on the dedicated-server classpath.
+     */
+    public static void callClient(String className, String method, Class<?>[] types, Object[] args) {
+        if (FMLEnvironment.dist != Dist.CLIENT) {
+            return;
+        }
+        try {
+            Class.forName(className).getMethod(method, types).invoke(null, args);
+        } catch (Throwable t) {
+            Hats.LOGGER.error("Failed to handle client packet {}.{}", className, method, t);
+        }
     }
 
     // =====================

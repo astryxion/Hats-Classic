@@ -1,9 +1,9 @@
 package com.astryxion.hats.common.network.trade;
 
+import com.astryxion.hats.common.network.HatPacketHandler;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import org.jetbrains.annotations.Nullable;
@@ -54,8 +54,11 @@ public class PacketPeerInventory {
     }
 
     public static void handle(PacketPeerInventory msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                com.astryxion.hats.client.trade.ClientTradePackets.onPeerInventory(msg)));
+        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
+                "com.astryxion.hats.client.trade.ClientTradePackets",
+                "onPeerInventory",
+                new Class<?>[]{PacketPeerInventory.class},
+                new Object[]{msg}));
         ctx.get().setPacketHandled(true);
     }
 }

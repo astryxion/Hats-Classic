@@ -1,8 +1,8 @@
 package com.astryxion.hats.common.network.trade;
 
+import com.astryxion.hats.common.network.HatPacketHandler;
+
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.UUID;
@@ -29,8 +29,11 @@ public class PacketTradePartnerLeft {
     }
 
     public static void handle(PacketTradePartnerLeft msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                com.astryxion.hats.client.trade.ClientTradePackets.onPartnerLeft(msg)));
+        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
+                "com.astryxion.hats.client.trade.ClientTradePackets",
+                "onPartnerLeft",
+                new Class<?>[]{PacketTradePartnerLeft.class},
+                new Object[]{msg}));
         ctx.get().setPacketHandled(true);
     }
 }

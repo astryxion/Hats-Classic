@@ -2,7 +2,8 @@ package com.astryxion.hats.common.network.trade;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
+import com.astryxion.hats.common.network.HatPacketHandler;
+
 import net.minecraftforge.network.NetworkEvent;
 
 import org.jetbrains.annotations.Nullable;
@@ -105,12 +106,11 @@ public class PacketTradeResolved {
     }
 
     public static void handle(PacketTradeResolved msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            if (net.minecraftforge.fml.loading.FMLEnvironment.dist != Dist.CLIENT) {
-                return;
-            }
-            com.astryxion.hats.client.trade.ClientTradePackets.onResolved(msg);
-        });
+        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
+                "com.astryxion.hats.client.trade.ClientTradePackets",
+                "onResolved",
+                new Class<?>[]{PacketTradeResolved.class},
+                new Object[]{msg}));
         ctx.get().setPacketHandled(true);
     }
 }

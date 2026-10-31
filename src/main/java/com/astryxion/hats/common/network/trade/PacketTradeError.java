@@ -2,9 +2,9 @@ package com.astryxion.hats.common.network.trade;
 
 import com.astryxion.hats.common.trade.TradeErrorType;
 
+import com.astryxion.hats.common.network.HatPacketHandler;
+
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -37,8 +37,11 @@ public class PacketTradeError {
     }
 
     public static void handle(PacketTradeError msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                com.astryxion.hats.client.trade.ClientTradePackets.onError(msg)));
+        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
+                "com.astryxion.hats.client.trade.ClientTradePackets",
+                "onError",
+                new Class<?>[]{PacketTradeError.class},
+                new Object[]{msg}));
         ctx.get().setPacketHandled(true);
     }
 }
