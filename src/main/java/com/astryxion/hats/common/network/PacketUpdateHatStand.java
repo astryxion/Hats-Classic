@@ -4,29 +4,40 @@ import com.astryxion.hats.common.hat.HatItem;
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.common.hatstand.HatStandEntity;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record PacketUpdateHatStand(int entityId, ItemStack hat) implements CustomPacketPayload {
 
-public record PacketUpdateHatStand(int entityId, ItemStack hat) {
+    public static final CustomPacketPayload.Type<PacketUpdateHatStand> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "update_hat_stand"));
 
-    public static void encode(PacketUpdateHatStand message, FriendlyByteBuf buffer) {
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketUpdateHatStand> STREAM_CODEC =
+            StreamCodec.of(PacketUpdateHatStand::encode, PacketUpdateHatStand::decode);
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buffer, PacketUpdateHatStand message) {
         buffer.writeVarInt(message.entityId);
-        buffer.writeItem(message.hat);
+        ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, message.hat);
     }
 
-    public static PacketUpdateHatStand decode(FriendlyByteBuf buffer) {
-        return new PacketUpdateHatStand(buffer.readVarInt(), buffer.readItem());
+    public static PacketUpdateHatStand decode(RegistryFriendlyByteBuf buffer) {
+        return new PacketUpdateHatStand(buffer.readVarInt(), ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer));
     }
 
-    public static void handle(PacketUpdateHatStand message, Supplier<NetworkEvent.Context> supplier) {
-        NetworkEvent.Context context = supplier.get();
-        context.enqueueWork(() -> {
-            ServerPlayer player = context.getSender();
+    public static void handle(PacketUpdateHatStand message, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player == null) {
                 return;
             }
@@ -45,6 +56,5 @@ public record PacketUpdateHatStand(int entityId, ItemStack hat) {
                 HatManager.setHatStack(stand, requested);
             }
         });
-        context.setPacketHandled(true);
     }
 }

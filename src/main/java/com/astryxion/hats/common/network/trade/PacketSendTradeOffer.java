@@ -8,45 +8,56 @@ import com.astryxion.hats.common.trade.TradeHats;
 import com.astryxion.hats.common.trade.TradeOffer;
 import com.astryxion.hats.common.trade.TradeOfferStore;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketSendTradeOffer {
+public class PacketSendTradeOffer implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketSendTradeOffer> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "send_trade_offer"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketSendTradeOffer> STREAM_CODEC =
+            StreamCodec.of(PacketSendTradeOffer::encode, PacketSendTradeOffer::decode);
 
     private final UUID receiverUuid;
-    private final List<ResourceLocation> senderHats;
-    private final List<ResourceLocation> receiverHats;
+    private final List<Identifier> senderHats;
+    private final List<Identifier> receiverHats;
 
-    public PacketSendTradeOffer(UUID receiverUuid, List<ResourceLocation> senderHats, List<ResourceLocation> receiverHats) {
+    public PacketSendTradeOffer(UUID receiverUuid, List<Identifier> senderHats, List<Identifier> receiverHats) {
         this.receiverUuid = receiverUuid;
         this.senderHats = List.copyOf(senderHats);
         this.receiverHats = List.copyOf(receiverHats);
     }
 
-    public static void encode(PacketSendTradeOffer msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketSendTradeOffer msg) {
         buf.writeUUID(msg.receiverUuid);
         TradePacketBuffers.writeIds(buf, msg.senderHats);
         TradePacketBuffers.writeIds(buf, msg.receiverHats);
     }
 
-    public static PacketSendTradeOffer decode(FriendlyByteBuf buf) {
+    public static PacketSendTradeOffer decode(RegistryFriendlyByteBuf buf) {
         return new PacketSendTradeOffer(buf.readUUID(), TradePacketBuffers.readIds(buf), TradePacketBuffers.readIds(buf));
     }
 
-    public static void handle(PacketSendTradeOffer msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
-            if (sender == null || sender.getServer() == null) {
+    public static void handle(PacketSendTradeOffer msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = (ServerPlayer) ctx.player();
+            if (sender == null || sender.level().getServer() == null) {
                 return;
             }
-            ServerPlayer receiver = sender.getServer().getPlayerList().getPlayer(msg.receiverUuid);
+            ServerPlayer receiver = sender.level().getServer().getPlayerList().getPlayer(msg.receiverUuid);
             if (receiver == null || receiver.level() != sender.level()) {
                 HatTradeNetwork.send(sender, new PacketTradeError(TradeErrorType.RECEIVER_OFFLINE, ""));
                 return;
@@ -73,9 +84,9 @@ public class PacketSendTradeOffer {
             TradeOffer offer = new TradeOffer(
                     UUID.randomUUID(),
                     sender.getUUID(),
-                    sender.getGameProfile().getName(),
+                    sender.getGameProfile().name(),
                     receiver.getUUID(),
-                    receiver.getGameProfile().getName(),
+                    receiver.getGameProfile().name(),
                     msg.senderHats,
                     msg.receiverHats,
                     System.currentTimeMillis()
@@ -87,16 +98,15 @@ public class PacketSendTradeOffer {
             TradeOfferStore.get().closeSession(sender.getUUID());
             HatTradeNetwork.send(receiver, new PacketIncomingTradeOffer(offer));
         });
-        context.setPacketHandled(true);
     }
 
     private static boolean validateOwned(
             ServerPlayer notify,
             ServerPlayer owner,
-            List<ResourceLocation> hats,
+            List<Identifier> hats,
             boolean senderSide
     ) {
-        for (ResourceLocation id : hats) {
+        for (Identifier id : hats) {
             if (!TradeHats.isHat(id)
                     || (Config.hatMode != HatMode.COSMETIC && !HatDataAccess.has(owner, id))) {
                 HatTradeNetwork.send(notify, new PacketTradeError(

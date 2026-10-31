@@ -1,5 +1,7 @@
 package com.astryxion.hats.common.spawn;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.Config;
 import com.astryxion.hats.common.hat.HatAccessories;
@@ -11,22 +13,22 @@ import com.astryxion.hats.common.tabula.TabulaHats;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-@Mod.EventBusSubscriber(modid = Hats.MODID)
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatSpawnHandler {
 
     public static void onFirstTick(LivingEntity entity) {
@@ -38,8 +40,10 @@ public class HatSpawnHandler {
     private static final String HAT_ROLLED_KEY = "HatsModHatRolled";
 
     @SubscribeEvent
-    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
-        LivingEntity entity = event.getEntity();
+    public static void onLivingTick(EntityTickEvent.Post event) {
+        if (!(event.getEntity() instanceof LivingEntity entity)) {
+            return;
+        }
         if (entity.level().isClientSide()) {
             return;
         }
@@ -80,7 +84,7 @@ public class HatSpawnHandler {
         var data = entity.getPersistentData();
 
         // HARD LOCK: if evaluated once, never reroll
-        if (data.getBoolean(HAT_ROLLED_KEY))
+        if (data.getBooleanOr(HAT_ROLLED_KEY, false))
             return;
 
         // Mark evaluated immediately (win or lose)
@@ -125,16 +129,16 @@ public class HatSpawnHandler {
         if (!Config.preventUndeadFire) {
             return;
         }
-        if (!(entity.level() instanceof ServerLevel level) || !level.isDay()) {
+        if (!(entity.level() instanceof ServerLevel level) || !level.isBrightOutside()) {
             return;
         }
-        if (entity.getMobType() != MobType.UNDEAD) {
+        if (!entity.getType().builtInRegistryHolder().is(EntityTypeTags.UNDEAD)) {
             return;
         }
         if (!HatManager.hasHat(entity) || !entity.isOnFire()) {
             return;
         }
-        if (entity.isInWaterRainOrBubble() || entity.isInPowderSnow) {
+        if (entity.isInWaterOrRain() || entity.isInPowderSnow) {
             return;
         }
         BlockPos eyePos = BlockPos.containing(entity.getX(), entity.getEyeY(), entity.getZ());

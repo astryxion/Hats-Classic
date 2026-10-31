@@ -1,5 +1,9 @@
 package com.astryxion.hats.common.hat;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Config;
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.capability.HatDataCapability;
@@ -17,26 +21,25 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * Hunting unlocks increment stack counts. First copy also toasts and
  * advances collect milestones. Hatless living killers inherit the victim hat
  * when Mob Hat Takeover is on.
  */
-@Mod.EventBusSubscriber(modid = Hats.MODID)
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatUnlockHandler {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -50,7 +53,7 @@ public class HatUnlockHandler {
         }
 
         ItemStack hatStack = HatManager.getHatStack(victim);
-        ResourceLocation hatId = hatStack.isEmpty() ? null : ForgeRegistries.ITEMS.getKey(hatStack.getItem());
+        Identifier hatId = hatStack.isEmpty() ? null : BuiltInRegistries.ITEM.getKey(hatStack.getItem());
         if (hatId == null || !hatId.getNamespace().equals(Hats.MODID)) {
             return;
         }
@@ -78,7 +81,7 @@ public class HatUnlockHandler {
         HatManager.clearHat(victim);
     }
 
-    private static void grantOrIncrement(ServerPlayer player, ResourceLocation hatId, ItemStack toastStack) {
+    private static void grantOrIncrement(ServerPlayer player, Identifier hatId, ItemStack toastStack) {
         ServerHatUnlocks store = ServerHatUnlocks.get(player);
         boolean firstCopy = store.add(player, hatId);
         PacketSetUnlockedHats.send(player);
@@ -88,21 +91,20 @@ public class HatUnlockHandler {
             return;
         }
 
-        player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
-            int totalUnlocked = store.copy(player).size();
-            CompoundTag unlocked = data.serializeNBT();
-            com.astryxion.hats.common.capability.HatDataAccess.apply(player, unlocked);
-            HatPacketHandler.sendToPlayer(player, new PacketHatUnlocked(toastStack));
-            HatPacketHandler.sendToPlayer(player, new PacketSyncHat(unlocked));
-            player.getInventory().setChanged();
-            if (Config.hatUnlockAnnouncement) {
-                broadcastHatUnlock(player, toastStack, hatId);
-            }
-            Hats.LOGGER.info("Unlocked hat: {} | Total: {}", hatId, totalUnlocked);
-        });
+        PlayerHatData data = player.getData(HatDataCapability.HAT_DATA);
+        int totalUnlocked = store.copy(player).size();
+        CompoundTag unlocked = data.serializeNBT();
+        com.astryxion.hats.common.capability.HatDataAccess.apply(player, unlocked);
+        HatPacketHandler.sendToPlayer(player, new PacketHatUnlocked(toastStack));
+        HatPacketHandler.sendToPlayer(player, new PacketSyncHat(unlocked));
+        player.getInventory().setChanged();
+        if (Config.hatUnlockAnnouncement) {
+            broadcastHatUnlock(player, toastStack, hatId);
+        }
+        Hats.LOGGER.info("Unlocked hat: {} | Total: {}", hatId, totalUnlocked);
     }
 
-    private static void broadcastHatUnlock(ServerPlayer player, ItemStack hat, ResourceLocation hatId) {
+    private static void broadcastHatUnlock(ServerPlayer player, ItemStack hat, Identifier hatId) {
         Item item = hat.getItem();
         HatRarity rarity = item instanceof HatItem hatItem ? hatItem.getHatRarity() : HatRarity.COMMON;
         TextColor color = TextColor.fromRgb(rarity.getColor());
@@ -127,10 +129,10 @@ public class HatUnlockHandler {
 
         MutableComponent hatName = Component.literal(displayName).withStyle(style -> style
                 .withColor(color)
-                .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip))
+                .withHoverEvent(new HoverEvent.ShowText(tooltip))
                 .withInsertion(insertion.toString()));
 
-        player.server.getPlayerList().broadcastSystemMessage(
+        player.level().getServer().getPlayerList().broadcastSystemMessage(
                 Component.literal("")
                         .append(player.getDisplayName())
                         .append(Component.literal(" unlocked "))

@@ -7,113 +7,84 @@ import com.astryxion.hats.common.network.PacketRehatify;
 import com.astryxion.hats.common.network.PacketSetUnlockedHats;
 import com.astryxion.hats.common.sound.HatsSounds;
 
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.UseAnim;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.fml.DistExecutor;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Map;
-import java.util.function.Consumer;
 
 public class HatLauncherItem extends Item {
 
     public HatLauncherItem(Properties properties) {
-        super(properties);
+        super(properties.enchantable(22));
     }
 
     @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                com.astryxion.hats.client.render.HatLauncherClientExtensions.register(consumer));
-    }
-
-    @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             if (player.isShiftKeyDown() || shouldOpenSelect(player, stack)) {
-                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                        com.astryxion.hats.client.gui.HatLaunchSelectScreen.open(hand));
+                if (FMLEnvironment.getDist() == Dist.CLIENT) {
+                    com.astryxion.hats.client.gui.HatLaunchSelectScreen.open(hand);
+                }
             }
-            return InteractionResultHolder.sidedSuccess(stack, true);
+            return InteractionResult.SUCCESS;
         }
         if (player.isShiftKeyDown() || !(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.sidedSuccess(stack, false);
+            return InteractionResult.CONSUME;
         }
         var hatId = HatLaunch.resolve(serverPlayer, stack);
         if (hatId != null) {
             fire(serverPlayer, stack, hatId, hand);
         } else if (!tryStripLookedAt(serverPlayer, hand)) {
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.UI_BUTTON_CLICK.get(), SoundSource.PLAYERS, 0.6F,
+                    SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F,
                     0.9F + (player.getRandom().nextFloat() * 2F - 1F) * 0.075F);
         }
-        return InteractionResultHolder.sidedSuccess(stack, false);
+        return InteractionResult.CONSUME;
     }
 
     @Override
-    public boolean hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
+    public void hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
         if (!attacker.level().isClientSide() && attacker instanceof ServerPlayer player) {
             stripHat(player, target);
         }
-        return true;
     }
 
     @Override
-    public boolean canApplyAtEnchantingTable(ItemStack stack, Enchantment enchantment) {
-        return enchantment == Enchantments.POWER_ARROWS
-                || enchantment == Enchantments.PUNCH_ARROWS
-                || enchantment == Enchantments.FLAMING_ARROWS;
+    public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
+        return enchantment.is(Enchantments.POWER)
+                || enchantment.is(Enchantments.PUNCH)
+                || enchantment.is(Enchantments.FLAME);
     }
 
     @Override
-    public boolean isEnchantable(ItemStack stack) {
-        return true;
+    public ItemUseAnimation getUseAnimation(ItemStack stack) {
+        return ItemUseAnimation.BOW;
     }
 
     @Override
-    public int getEnchantmentValue() {
-        return 22;
-    }
-
-    @Override
-    public boolean isBookEnchantable(ItemStack stack, ItemStack book) {
-        Map<Enchantment, Integer> enchantments = EnchantmentHelper.getEnchantments(book);
-        for (Enchantment enchantment : enchantments.keySet()) {
-            if (!canApplyAtEnchantingTable(stack, enchantment)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public UseAnim getUseAnimation(ItemStack stack) {
-        return UseAnim.BOW;
-    }
-
-    @Override
-    public int getUseDuration(ItemStack stack) {
+    public int getUseDuration(ItemStack stack, LivingEntity entity) {
         return 72000;
     }
 
@@ -125,11 +96,11 @@ public class HatLauncherItem extends Item {
         if (HatLaunch.RANDOM_ID.equals(stored)) {
             return !HatLaunch.clientHasLaunchable(player, null);
         }
-        var id = net.minecraft.resources.ResourceLocation.tryParse(stored);
+        var id = net.minecraft.resources.Identifier.tryParse(stored);
         return !HatLaunch.clientHasLaunchable(player, id);
     }
 
-    private static void fire(ServerPlayer player, ItemStack launcher, net.minecraft.resources.ResourceLocation hatId, InteractionHand hand) {
+    private static void fire(ServerPlayer player, ItemStack launcher, net.minecraft.resources.Identifier hatId, InteractionHand hand) {
         Level level = player.level();
         level.playSound(null, player.getX(), player.getY(), player.getZ(),
                 HatsSounds.TUBE.get(), SoundSource.PLAYERS, 1.0F,
@@ -149,17 +120,17 @@ public class HatLauncherItem extends Item {
         hat.setYRot(player.getYRot());
         hat.setXRot(player.getXRot());
 
-        int punch = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.PUNCH_ARROWS, launcher);
+        int punch = enchantLevel(player, launcher, Enchantments.PUNCH);
         if (punch > 0) {
             hat.setKnockbackStrength(punch);
         }
         float momentum = 0.5F;
-        int power = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.POWER_ARROWS, launcher);
+        int power = enchantLevel(player, launcher, Enchantments.POWER);
         if (power > 0) {
             momentum += power * 0.25F;
         }
-        if (EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FLAMING_ARROWS, launcher) > 0) {
-            hat.setSecondsOnFire(5);
+        if (enchantLevel(player, launcher, Enchantments.FLAME) > 0) {
+            hat.igniteForSeconds(5);
         }
         hat.setThrowableHeading(
                 -Mth.sin(player.getYRot() / 180.0F * (float) Math.PI) * Mth.cos(player.getXRot() / 180.0F * (float) Math.PI),
@@ -224,5 +195,12 @@ public class HatLauncherItem extends Item {
         HatPacketHandler.syncHatPartToTracking(target);
         HatPacketHandler.sendToPlayer(player, new PacketRehatify(target.getId()));
         return true;
+    }
+
+    private static int enchantLevel(ServerPlayer player, ItemStack stack, ResourceKey<Enchantment> key) {
+        return player.level().registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
+                .get(key)
+                .map(holder -> stack.getEnchantments().getLevel(holder))
+                .orElse(0);
     }
 }

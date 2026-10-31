@@ -7,13 +7,11 @@ import com.astryxion.hats.mixin.ModelPartAccessor;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 import org.joml.Matrix3f;
@@ -32,8 +30,9 @@ public final class EnderDragonHatRenderer {
     private static final float ITEM_HEAD_SCALE = 0.625F;
     private static final float DRAGON_HAT_SCALE = 4.0F;
 
-    private static final ThreadLocal<MultiBufferSource> BUFFER = new ThreadLocal<>();
+    private static final ThreadLocal<SubmitNodeCollector> COLLECTOR = new ThreadLocal<>();
     private static final ThreadLocal<Integer> LIGHT = new ThreadLocal<>();
+    private static final ThreadLocal<Integer> PASS = ThreadLocal.withInitial(() -> 0);
     private static final ThreadLocal<EnderDragon> DRAGON = new ThreadLocal<>();
     private static final ThreadLocal<ModelPart> HEAD = new ThreadLocal<>();
     private static final ThreadLocal<Matrix4f> HEAD_POSE = new ThreadLocal<>();
@@ -42,22 +41,40 @@ public final class EnderDragonHatRenderer {
 
     private EnderDragonHatRenderer() {}
 
-    public static void beginFrame(MultiBufferSource buffer, int packedLight) {
-        BUFFER.set(buffer);
+    public static void beginFrame(SubmitNodeCollector collector, int packedLight) {
+        COLLECTOR.set(collector);
         LIGHT.set(packedLight);
+        PASS.set(0);
         DRAWN.set(false);
         HEAD_POSE.remove();
         HEAD_NORMAL.remove();
     }
 
     public static void endFrame() {
-        BUFFER.remove();
+        COLLECTOR.remove();
         LIGHT.remove();
         DRAGON.remove();
         HEAD.remove();
         HEAD_POSE.remove();
         HEAD_NORMAL.remove();
         DRAWN.remove();
+        PASS.remove();
+    }
+
+    public static EnderDragon dragon() {
+        return DRAGON.get();
+    }
+
+    public static void bindDragon(EnderDragon dragon) {
+        DRAGON.set(dragon);
+    }
+
+    public static void finishPass() {
+        int pass = PASS.get() + 1;
+        PASS.set(pass);
+        if (pass >= 2) {
+            endFrame();
+        }
     }
 
     public static void bindHead(EnderDragon dragon, ModelPart head) {
@@ -89,11 +106,11 @@ public final class EnderDragonHatRenderer {
         }
         Matrix4f headPose = HEAD_POSE.get();
         Matrix3f headNormal = HEAD_NORMAL.get();
-        MultiBufferSource buffer = BUFFER.get();
+        SubmitNodeCollector collector = COLLECTOR.get();
         Integer packedLight = LIGHT.get();
         EnderDragon dragon = DRAGON.get();
         ModelPart head = HEAD.get();
-        if (headPose == null || headNormal == null || buffer == null
+        if (headPose == null || headNormal == null || collector == null
                 || packedLight == null || dragon == null || head == null) {
             return;
         }
@@ -133,13 +150,11 @@ public final class EnderDragonHatRenderer {
             }
             TabulaHatPlacement.applyZFight(poseStack);
             TabulaHatRenderer.render(
-                    poseStack, buffer, packedLight, OverlayTexture.NO_OVERLAY, hat, geometryScale);
+                    poseStack, collector, packedLight, OverlayTexture.NO_OVERLAY, hat, geometryScale);
         } else {
             poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
             poseStack.scale(ITEM_HEAD_SCALE, -ITEM_HEAD_SCALE, -ITEM_HEAD_SCALE);
-            Minecraft.getInstance().getItemRenderer().renderStatic(
-                    dragon, hat, ItemDisplayContext.HEAD, false, poseStack, buffer,
-                    dragon.level(), packedLight, OverlayTexture.NO_OVERLAY, 0);
+            HatRenderLayer.submitHatItem(poseStack, collector, dragon, hat, packedLight, OverlayTexture.NO_OVERLAY);
         }
         poseStack.popPose();
     }

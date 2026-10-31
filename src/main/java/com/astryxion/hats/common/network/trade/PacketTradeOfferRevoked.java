@@ -1,14 +1,22 @@
 package com.astryxion.hats.common.network.trade;
 
-import com.astryxion.hats.common.network.HatPacketHandler;
-
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketTradeOfferRevoked {
+public class PacketTradeOfferRevoked implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketTradeOfferRevoked> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "trade_offer_revoked"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketTradeOfferRevoked> STREAM_CODEC =
+            StreamCodec.of(PacketTradeOfferRevoked::encode, PacketTradeOfferRevoked::decode);
 
     private final UUID offerId;
 
@@ -20,20 +28,24 @@ public class PacketTradeOfferRevoked {
         return offerId;
     }
 
-    public static void encode(PacketTradeOfferRevoked msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketTradeOfferRevoked msg) {
         buf.writeUUID(msg.offerId);
     }
 
-    public static PacketTradeOfferRevoked decode(FriendlyByteBuf buf) {
+    public static PacketTradeOfferRevoked decode(RegistryFriendlyByteBuf buf) {
         return new PacketTradeOfferRevoked(buf.readUUID());
     }
 
-    public static void handle(PacketTradeOfferRevoked msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
-                "com.astryxion.hats.client.trade.ClientTradePackets",
-                "onRevoked",
-                new Class<?>[]{PacketTradeOfferRevoked.class},
-                new Object[]{msg}));
-        ctx.get().setPacketHandled(true);
+    public static void handle(PacketTradeOfferRevoked msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (FMLEnvironment.getDist() == Dist.CLIENT) {
+                com.astryxion.hats.client.trade.ClientTradePackets.onRevoked(msg);
+            }
+        });
     }
 }

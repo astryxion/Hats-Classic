@@ -4,11 +4,14 @@ import com.astryxion.hats.common.data.ServerHatUnlocks;
 import com.astryxion.hats.common.trade.TradeHats;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -16,43 +19,48 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * Authoritative wardrobe sync, including stack counts. Trades also carry the
  * gained/lost ids so the proposer applies the same local swap the accepter
  * already does on click.
  */
-public class PacketSetUnlockedHats {
+public class PacketSetUnlockedHats implements CustomPacketPayload {
 
-    private final List<ResourceLocation> unlocked;
+    public static final CustomPacketPayload.Type<PacketSetUnlockedHats> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "set_unlocked_hats"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketSetUnlockedHats> STREAM_CODEC =
+            StreamCodec.of(PacketSetUnlockedHats::encode, PacketSetUnlockedHats::decode);
+
+    private final List<Identifier> unlocked;
     private final List<Integer> counts;
-    private final List<ResourceLocation> gained;
-    private final List<ResourceLocation> lost;
+    private final List<Identifier> gained;
+    private final List<Identifier> lost;
     @Nullable
-    private final ResourceLocation equipped;
+    private final Identifier equipped;
     private final boolean openMenu;
 
-    public PacketSetUnlockedHats(Collection<ResourceLocation> unlocked, @Nullable ResourceLocation equipped) {
+    public PacketSetUnlockedHats(Collection<Identifier> unlocked, @Nullable Identifier equipped) {
         this(unlocked, equipped, false, List.of(), List.of(), List.of());
     }
 
     public PacketSetUnlockedHats(
-            Collection<ResourceLocation> unlocked,
-            @Nullable ResourceLocation equipped,
+            Collection<Identifier> unlocked,
+            @Nullable Identifier equipped,
             boolean openMenu,
-            Collection<ResourceLocation> gained,
-            Collection<ResourceLocation> lost
+            Collection<Identifier> gained,
+            Collection<Identifier> lost
     ) {
         this(unlocked, equipped, openMenu, gained, lost, List.of());
     }
 
     public PacketSetUnlockedHats(
-            Collection<ResourceLocation> unlocked,
-            @Nullable ResourceLocation equipped,
+            Collection<Identifier> unlocked,
+            @Nullable Identifier equipped,
             boolean openMenu,
-            Collection<ResourceLocation> gained,
-            Collection<ResourceLocation> lost,
+            Collection<Identifier> gained,
+            Collection<Identifier> lost,
             List<Integer> counts
     ) {
         this.unlocked = List.copyOf(unlocked);
@@ -63,11 +71,16 @@ public class PacketSetUnlockedHats {
         this.counts = List.copyOf(counts);
     }
 
-    public static void encode(PacketSetUnlockedHats msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketSetUnlockedHats msg) {
         writeIds(buf, msg.unlocked);
         buf.writeBoolean(msg.equipped != null);
         if (msg.equipped != null) {
-            buf.writeResourceLocation(msg.equipped);
+            buf.writeIdentifier(msg.equipped);
         }
         buf.writeBoolean(msg.openMenu);
         writeIds(buf, msg.gained);
@@ -78,12 +91,12 @@ public class PacketSetUnlockedHats {
         }
     }
 
-    public static PacketSetUnlockedHats decode(FriendlyByteBuf buf) {
-        List<ResourceLocation> unlocked = readIds(buf);
-        ResourceLocation equipped = buf.readBoolean() ? buf.readResourceLocation() : null;
+    public static PacketSetUnlockedHats decode(RegistryFriendlyByteBuf buf) {
+        List<Identifier> unlocked = readIds(buf);
+        Identifier equipped = buf.readBoolean() ? buf.readIdentifier() : null;
         boolean openMenu = buf.readBoolean();
-        List<ResourceLocation> gained = readIds(buf);
-        List<ResourceLocation> lost = readIds(buf);
+        List<Identifier> gained = readIds(buf);
+        List<Identifier> lost = readIds(buf);
         int countSize = buf.readVarInt();
         List<Integer> counts = new ArrayList<>(countSize);
         for (int i = 0; i < countSize; i++) {
@@ -92,13 +105,13 @@ public class PacketSetUnlockedHats {
         return new PacketSetUnlockedHats(unlocked, equipped, openMenu, gained, lost, counts);
     }
 
-    public static void handle(PacketSetUnlockedHats msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
-                "com.astryxion.hats.client.network.HatClientPacketHandlers",
-                "applyUnlockedHats",
-                new Class<?>[]{List.class, ResourceLocation.class, boolean.class, List.class, List.class, List.class},
-                new Object[]{msg.unlocked, msg.equipped, msg.openMenu, msg.gained, msg.lost, msg.counts}));
-        ctx.get().setPacketHandled(true);
+    public static void handle(PacketSetUnlockedHats msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (FMLEnvironment.getDist() != Dist.CLIENT) {
+                return;
+            }
+            applyClient(msg.unlocked, msg.equipped, msg.openMenu, msg.gained, msg.lost, msg.counts);
+        });
     }
 
     public static void send(ServerPlayer player) {
@@ -106,67 +119,100 @@ public class PacketSetUnlockedHats {
             return;
         }
         ServerHatUnlocks store = ServerHatUnlocks.get(player);
-        LinkedHashMap<ResourceLocation, Integer> owned = store.copyCounts(player);
+        LinkedHashMap<Identifier, Integer> owned = store.copyCounts(player);
         send(player, owned.keySet(), TradeHats.equippedId(player), false, List.of(), List.of(),
                 new ArrayList<>(owned.values()));
     }
 
-    public static void send(ServerPlayer player, Collection<ResourceLocation> unlocked, @Nullable ResourceLocation equipped) {
+    public static void send(ServerPlayer player, Collection<Identifier> unlocked, @Nullable Identifier equipped) {
         send(player, unlocked, equipped, false, List.of(), List.of(), countsFor(player, unlocked));
     }
 
     public static void sendTrade(
             ServerPlayer player,
-            Collection<ResourceLocation> unlocked,
-            @Nullable ResourceLocation equipped,
-            Collection<ResourceLocation> gained,
-            Collection<ResourceLocation> lost
+            Collection<Identifier> unlocked,
+            @Nullable Identifier equipped,
+            Collection<Identifier> gained,
+            Collection<Identifier> lost
     ) {
         send(player, unlocked, equipped, true, gained, lost, countsFor(player, unlocked));
     }
 
-    private static List<Integer> countsFor(ServerPlayer player, Collection<ResourceLocation> unlocked) {
+    private static List<Integer> countsFor(ServerPlayer player, Collection<Identifier> unlocked) {
         return ServerHatUnlocks.get(player).countsOf(unlocked, player);
     }
 
     private static void send(
             ServerPlayer player,
-            Collection<ResourceLocation> unlocked,
-            @Nullable ResourceLocation equipped,
+            Collection<Identifier> unlocked,
+            @Nullable Identifier equipped,
             boolean openMenu,
-            Collection<ResourceLocation> gained,
-            Collection<ResourceLocation> lost,
+            Collection<Identifier> gained,
+            Collection<Identifier> lost,
             List<Integer> counts
     ) {
         if (player == null) {
             return;
         }
-        List<ResourceLocation> ids = List.copyOf(unlocked);
-        List<ResourceLocation> gainedIds = List.copyOf(gained);
-        List<ResourceLocation> lostIds = List.copyOf(lost);
+        List<Identifier> ids = List.copyOf(unlocked);
+        List<Identifier> gainedIds = List.copyOf(gained);
+        List<Identifier> lostIds = List.copyOf(lost);
         List<Integer> amounts = List.copyOf(counts);
         HatPacketHandler.sendToPlayer(player, new PacketSetUnlockedHats(ids, equipped, openMenu, gainedIds, lostIds, amounts));
-        if (FMLEnvironment.dist == Dist.CLIENT) {
-            HatPacketHandler.callClient(
-                    "com.astryxion.hats.client.network.HatClientPacketHandlers",
-                    "scheduleUnlockedHats",
-                    new Class<?>[]{List.class, ResourceLocation.class, boolean.class, List.class, List.class, List.class, java.util.UUID.class, String.class},
-                    new Object[]{ids, equipped, openMenu, gainedIds, lostIds, amounts, player.getUUID(), player.getGameProfile().getName()});
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
+            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+            java.util.UUID target = player.getUUID();
+            String targetName = player.getGameProfile().name();
+            minecraft.execute(() -> {
+                if (minecraft.player == null) {
+                    return;
+                }
+                if (!minecraft.player.getUUID().equals(target)
+                        && !minecraft.player.getGameProfile().name().equals(targetName)) {
+                    return;
+                }
+                applyClient(ids, equipped, openMenu, gainedIds, lostIds, amounts);
+            });
         }
     }
 
-    private static void writeIds(FriendlyByteBuf buf, List<ResourceLocation> ids) {
+    private static void applyClient(
+            List<Identifier> unlocked,
+            @Nullable Identifier equipped,
+            boolean openMenu,
+            List<Identifier> gained,
+            List<Identifier> lost,
+            List<Integer> counts
+    ) {
+        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+        com.astryxion.hats.client.hat.ClientHatUnlocks.ensureSeeded(minecraft.player);
+        if (!gained.isEmpty() || !lost.isEmpty()) {
+            com.astryxion.hats.client.hat.ClientHatUnlocks.applySwap(gained, lost);
+        }
+        com.astryxion.hats.client.hat.ClientHatUnlocks.forceSetIfComplete(unlocked, gained, counts);
+        if (minecraft.player != null) {
+            com.astryxion.hats.common.capability.HatDataAccess.replaceUnlocked(
+                    minecraft.player, com.astryxion.hats.client.hat.ClientHatUnlocks.all(), equipped);
+        }
+        if (openMenu) {
+            com.astryxion.hats.client.gui.HatsGui.open();
+        } else {
+            com.astryxion.hats.client.gui.HatsGui.refreshIfOpen();
+        }
+    }
+
+    private static void writeIds(FriendlyByteBuf buf, List<Identifier> ids) {
         buf.writeVarInt(ids.size());
-        for (ResourceLocation id : ids) {
-            buf.writeResourceLocation(id);
+        for (Identifier id : ids) {
+            buf.writeIdentifier(id);
         }
     }
 
-    private static List<ResourceLocation> readIds(FriendlyByteBuf buf) {
+    private static List<Identifier> readIds(FriendlyByteBuf buf) {
         int count = buf.readVarInt();
-        List<ResourceLocation> ids = new ArrayList<>(count);
+        List<Identifier> ids = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            ids.add(buf.readResourceLocation());
+            ids.add(buf.readIdentifier());
         }
         return ids;
     }

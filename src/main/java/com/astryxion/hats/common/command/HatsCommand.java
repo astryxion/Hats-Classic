@@ -1,5 +1,9 @@
 package com.astryxion.hats.common.command;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.data.ServerHatUnlocks;
 import com.astryxion.hats.common.hat.HatItem;
@@ -24,24 +28,24 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
-@Mod.EventBusSubscriber(modid = Hats.MODID)
+@EventBusSubscriber(modid = Hats.MODID)
 public final class HatsCommand {
 
     private static final SimpleCommandExceptionType UNKNOWN_HAT =
@@ -55,7 +59,7 @@ public final class HatsCommand {
     public static void register(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
         dispatcher.register(Commands.literal("hats")
-                .requires(source -> source.hasPermission(2))
+                .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                 .then(Commands.literal("set")
                         .then(Commands.argument("targets", EntityArgument.entities())
                                 .then(Commands.argument("hat", StringArgumentType.word())
@@ -93,7 +97,7 @@ public final class HatsCommand {
                 if (!(item instanceof HatItem)) {
                     continue;
                 }
-                ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+                Identifier id = BuiltInRegistries.ITEM.getKey(item);
                 if (id == null || !TradeHats.isHat(id)) {
                     continue;
                 }
@@ -106,7 +110,7 @@ public final class HatsCommand {
     private static int setHat(CommandContext<CommandSourceStack> ctx, boolean silent)
             throws CommandSyntaxException {
         Collection<? extends Entity> targets = EntityArgument.getEntities(ctx, "targets");
-        ResourceLocation id = parseHat(StringArgumentType.getString(ctx, "hat"), true);
+        Identifier id = parseHat(StringArgumentType.getString(ctx, "hat"), true);
         Item item = id == null ? null : TradeHats.item(id);
         int count = 0;
         for (Entity entity : targets) {
@@ -118,8 +122,8 @@ public final class HatsCommand {
                 PacketSetUnlockedHats.send(player);
             }
             if (!silent) {
-                HatPacketHandler.CHANNEL.send(
-                        PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> living),
+                PacketDistributor.sendToPlayersTrackingEntityAndSelf(
+                        living,
                         new PacketRehatify(living.getId()));
             }
             count++;
@@ -141,7 +145,7 @@ public final class HatsCommand {
                     () -> Component.translatable("commands.hats.get.empty", entity.getName()), true);
             return Command.SINGLE_SUCCESS;
         }
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         String shown = id == null ? stack.getHoverName().getString() : id.toString();
         if (living instanceof ServerPlayer player && id != null) {
             int copies = ServerHatUnlocks.get(player).count(player, id);
@@ -160,7 +164,7 @@ public final class HatsCommand {
     private static int give(CommandContext<CommandSourceStack> ctx, int amount)
             throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        ResourceLocation id = parseHat(StringArgumentType.getString(ctx, "hat"), false);
+        Identifier id = parseHat(StringArgumentType.getString(ctx, "hat"), false);
         int next = ServerHatUnlocks.get(player).add(player, id, amount);
         PacketSetUnlockedHats.send(player);
         com.astryxion.hats.common.hat.HatAdvancements.onUnlockCounts(player, id);
@@ -173,8 +177,8 @@ public final class HatsCommand {
 
     private static int remove(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        ResourceLocation id = parseHat(StringArgumentType.getString(ctx, "hat"), false);
-        ResourceLocation worn = HatManager.getEquippedHatId(player);
+        Identifier id = parseHat(StringArgumentType.getString(ctx, "hat"), false);
+        Identifier worn = HatManager.getEquippedHatId(player);
         boolean removed = ServerHatUnlocks.get(player).removeHat(player, id);
         if (!removed) {
             ctx.getSource().sendFailure(
@@ -202,14 +206,14 @@ public final class HatsCommand {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static ResourceLocation parseHat(String raw, boolean allowNone) throws CommandSyntaxException {
+    private static Identifier parseHat(String raw, boolean allowNone) throws CommandSyntaxException {
         String name = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
         if (allowNone && (name.isEmpty() || name.equals("none") || name.equals("empty") || name.equals("off"))) {
             return null;
         }
-        ResourceLocation id = name.contains(":")
-                ? new ResourceLocation(name)
-                : new ResourceLocation(Hats.MODID, name);
+        Identifier id = name.contains(":")
+                ? Identifier.parse(name)
+                : Identifier.fromNamespaceAndPath(Hats.MODID, name);
         if (!TradeHats.isHat(id)) {
             throw UNKNOWN_HAT.create();
         }

@@ -1,6 +1,7 @@
 package com.astryxion.hats.common.hat;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -39,16 +40,14 @@ public class HatPart {
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         if (!hat.isEmpty()) {
-            // Saves the Item ID, Count, and ALL NBT data (colors, etc.)
-            tag.put("HatStack", hat.save(new CompoundTag()));
+            ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, hat).result().ifPresent(saved -> tag.put("HatStack", saved));
         }
         return tag;
     }
 
     public void deserializeNBT(CompoundTag tag) {
         if (tag.contains("HatStack")) {
-            // Reconstructs the exact ItemStack from the saved data
-            this.hat = ItemStack.of(tag.getCompound("HatStack"));
+            this.hat = ItemStack.CODEC.parse(NbtOps.INSTANCE, tag.getCompoundOrEmpty("HatStack")).result().orElse(ItemStack.EMPTY);
         } else {
             this.hat = ItemStack.EMPTY;
         }

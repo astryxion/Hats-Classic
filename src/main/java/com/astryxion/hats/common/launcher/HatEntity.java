@@ -10,30 +10,36 @@ import com.astryxion.hats.common.network.PacketSetUnlockedHats;
 import com.astryxion.hats.common.sound.HatsSounds;
 import com.astryxion.hats.common.trade.TradeHats;
 
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.animal.Pig;
+import net.minecraft.world.entity.animal.pig.Pig;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -66,15 +72,24 @@ public class HatEntity extends Entity {
         rotFactorY = (random.nextFloat() * 2F - 1F) * 45F;
     }
 
-    public HatEntity setHatId(ResourceLocation id) {
+    @Override
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        if (this.isInvulnerableToBase(source)) {
+            return false;
+        }
+        this.markHurt();
+        return false;
+    }
+
+    public HatEntity setHatId(Identifier id) {
         entityData.set(HAT_ID, id == null ? "" : id.toString());
         return this;
     }
 
     @Nullable
-    public ResourceLocation getHatId() {
+    public Identifier getHatId() {
         String raw = entityData.get(HAT_ID);
-        return raw == null || raw.isEmpty() ? null : ResourceLocation.tryParse(raw);
+        return raw == null || raw.isEmpty() ? null : Identifier.tryParse(raw);
     }
 
     public HatEntity setLastInteracted(LivingEntity living) {
@@ -110,7 +125,7 @@ public class HatEntity extends Entity {
             return;
         }
         age++;
-        if (age > Config.hatEntityLifespan && !level().isClientSide) {
+        if (age > Config.hatEntityLifespan && !level().isClientSide()) {
             discard();
             return;
         }
@@ -123,7 +138,7 @@ public class HatEntity extends Entity {
             applyLavaMotion();
         }
 
-        if (!level().isClientSide) {
+        if (!level().isClientSide()) {
             List<Entity> list = level().getEntities(this, getBoundingBox(),
                     entity -> entity instanceof LivingEntity && !entity.isSpectator());
             if (!leftEntity) {
@@ -148,7 +163,7 @@ public class HatEntity extends Entity {
                 EntityHitResult hit = ProjectileUtil.getEntityHitResult(
                         level(), this, eyePos, eyePos.add(getDeltaMovement()),
                         getBoundingBox().expandTowards(getDeltaMovement()).inflate(1.0D),
-                        this::canPutOnHat);
+                        this::canPutOnHat, 0.0F);
                 if (hit != null && hit.getEntity() instanceof LivingEntity living) {
                     collided = living;
                 }
@@ -161,7 +176,7 @@ public class HatEntity extends Entity {
 
         move(MoverType.SELF, getDeltaMovement());
         if (!wasCollided && (horizontalCollision || verticalCollision) && getHatId() != null) {
-            if (!level().isClientSide) {
+            if (!level().isClientSide()) {
                 level().playSound(null, getX(), getY(), getZ(),
                         HatsSounds.BONK.get(), SoundSource.NEUTRAL, 0.5F,
                         0.85F + (random.nextFloat() * 2F - 1F) * 0.075F);
@@ -187,13 +202,13 @@ public class HatEntity extends Entity {
     }
 
     private void putOn(LivingEntity target) {
-        ResourceLocation incoming = getHatId();
+        Identifier incoming = getHatId();
         if (incoming == null) {
             discard();
             return;
         }
         if (isOnFire()) {
-            target.setSecondsOnFire(5);
+            target.igniteForSeconds(5);
         }
         if (knockback > 0) {
             Vec3 push = getDeltaMovement().multiply(1.0D, 0.0D, 1.0D).normalize().scale(knockback * 0.6D);
@@ -201,7 +216,7 @@ public class HatEntity extends Entity {
                 target.push(push.x, knockback * 0.2D, push.z);
                 knockback = 0;
                 if (level() instanceof ServerLevel server) {
-                    server.getChunkSource().broadcast(target, new ClientboundSetEntityMotionPacket(target));
+                    server.getChunkSource().sendToTrackingPlayers(target, new ClientboundSetEntityMotionPacket(target));
                 }
             }
         }
@@ -220,7 +235,7 @@ public class HatEntity extends Entity {
             }
         }
 
-        ResourceLocation original = HatManager.getEquippedHatId(target);
+        Identifier original = HatManager.getEquippedHatId(target);
         HatManager.setHat(target, TradeHats.item(incoming));
         HatPacketHandler.syncHatPartToTracking(target);
         if (level() instanceof ServerLevel) {
@@ -250,7 +265,7 @@ public class HatEntity extends Entity {
                     0.2F + random.nextFloat() * 0.2F,
                     random.nextGaussian() * 0.2F);
             if (level() instanceof ServerLevel server) {
-                server.getChunkSource().broadcast(this, new ClientboundSetEntityMotionPacket(this));
+                server.getChunkSource().sendToTrackingPlayers(this, new ClientboundSetEntityMotionPacket(this));
             }
         } else {
             discard();
@@ -275,26 +290,27 @@ public class HatEntity extends Entity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        entityData.define(HAT_ID, "");
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(HAT_ID, "");
     }
 
     @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
-        entityData.set(HAT_ID, tag.getString("hatId"));
-        if (tag.hasUUID("lastInteractedEntity")) {
-            lastInteractedEntity = tag.getUUID("lastInteractedEntity");
+    protected void readAdditionalSaveData(ValueInput tag) {
+        entityData.set(HAT_ID, tag.getStringOr("hatId", ""));
+        int[] rawUuid = tag.getIntArray("lastInteractedEntity").orElse(null);
+        if (rawUuid != null && rawUuid.length == 4) {
+            lastInteractedEntity = UUIDUtil.uuidFromIntArray(rawUuid);
         }
-        leftEntity = tag.getBoolean("leftEntity");
-        age = tag.getInt("age");
-        isRogue = tag.getBoolean("isRogue");
+        leftEntity = tag.getBooleanOr("leftEntity", false);
+        age = tag.getIntOr("age", 0);
+        isRogue = tag.getBooleanOr("isRogue", false);
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
+    protected void addAdditionalSaveData(ValueOutput tag) {
         tag.putString("hatId", entityData.get(HAT_ID));
         if (lastInteractedEntity != null) {
-            tag.putUUID("lastInteractedEntity", lastInteractedEntity);
+            tag.putIntArray("lastInteractedEntity", UUIDUtil.uuidToIntArray(lastInteractedEntity));
         }
         tag.putBoolean("leftEntity", leftEntity);
         tag.putInt("age", age);
@@ -302,8 +318,8 @@ public class HatEntity extends Entity {
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    public Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity serverEntity) {
+        return new ClientboundAddEntityPacket(this, serverEntity);
     }
 
     @Override

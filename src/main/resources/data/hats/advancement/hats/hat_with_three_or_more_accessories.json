@@ -1,0 +1,26 @@
+{
+  "parent": "hats:hats/wear_hat_with_accessory",
+  "display": {
+    "icon": {
+      "id": "hats:adv_icon_three"
+    },
+    "title": {
+      "translate": "hats.advancement.hatWithThreeOrMoreAccessories.title"
+    },
+    "description": {
+      "translate": "hats.advancement.hatWithThreeOrMoreAccessories.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": true
+  },
+  "criteria": {
+    "unlock_via_code": {
+      "trigger": "minecraft:impossible"
+    }
+  },
+  "rewards": {
+    "experience": 50
+  }
+}

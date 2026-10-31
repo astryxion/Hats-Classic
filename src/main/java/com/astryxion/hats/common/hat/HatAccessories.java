@@ -3,11 +3,12 @@ package com.astryxion.hats.common.hat;
 import com.astryxion.hats.common.tabula.TabulaHatDefinition;
 import com.astryxion.hats.common.tabula.TabulaHats;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -26,16 +27,16 @@ public final class HatAccessories {
 
     public static List<String> showing(ItemStack stack) {
         List<String> ids = new ArrayList<>();
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) {
+        if (stack == null || stack.isEmpty() || !stack.has(DataComponents.CUSTOM_DATA)) {
             return ids;
         }
-        CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains(TAG, Tag.TAG_LIST)) {
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!tag.contains(TAG)) {
             return ids;
         }
-        ListTag list = tag.getList(TAG, Tag.TAG_STRING);
+        ListTag list = tag.getListOrEmpty(TAG);
         for (int i = 0; i < list.size(); i++) {
-            String id = list.getString(i);
+            String id = list.getStringOr(i, "");
             if (!id.isEmpty()) {
                 ids.add(id);
             }
@@ -169,18 +170,21 @@ public final class HatAccessories {
     }
 
     private static void write(ItemStack stack, Set<String> ids) {
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (ids.isEmpty()) {
             tag.remove(TAG);
             if (tag.isEmpty()) {
-                stack.setTag(null);
+                stack.remove(DataComponents.CUSTOM_DATA);
+            } else {
+                stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
             }
             return;
         }
         ListTag list = new ListTag();
         for (String id : ids) {
-            list.add(StringTag.valueOf(id));
+            list.add(list.size(), StringTag.valueOf(id));
         }
         tag.put(TAG, list);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 }

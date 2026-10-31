@@ -1,6 +1,7 @@
 package com.astryxion.hats.common.network;
 
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.hat.HatPart;
 import com.astryxion.hats.common.hat.HatPartCapability;
 import com.astryxion.hats.common.network.trade.PacketCloseTradeBuilder;
 import com.astryxion.hats.common.network.trade.PacketIncomingTradeOffer;
@@ -14,88 +15,59 @@ import com.astryxion.hats.common.network.trade.PacketTradeError;
 import com.astryxion.hats.common.network.trade.PacketTradeOfferRevoked;
 import com.astryxion.hats.common.network.trade.PacketTradePartnerLeft;
 import com.astryxion.hats.common.network.trade.PacketTradeResolved;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
-import java.util.function.Supplier;
-
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatPacketHandler {
 
-    private static final String CLIENT_HAT_HANDLERS = "com.astryxion.hats.client.network.HatClientPacketHandlers";
-
-    private static final String PROTOCOL = "2";
-    private static int id = 0;
-
-    public static final SimpleChannel CHANNEL =
-            NetworkRegistry.newSimpleChannel(
-                    new ResourceLocation(Hats.MODID, "main"),
-                    () -> PROTOCOL,
-                    PROTOCOL::equals,
-                    PROTOCOL::equals
-            );
-
-    public static void register() {
+    @SubscribeEvent
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar("2");
 
         // =====================
         // CLIENT -> SERVER
         // =====================
 
         // Handles equipping hats
-        CHANNEL.registerMessage(
-                id++,
-                PacketEquipHat.class,
-                PacketEquipHat::encode,
-                PacketEquipHat::decode,
+        registrar.playToServer(
+                PacketEquipHat.TYPE,
+                PacketEquipHat.STREAM_CODEC,
                 PacketEquipHat::handle
         );
 
         // 🔧 NEW: Handles granting "The Config Demon" (Cosmetic Mode)
-        CHANNEL.registerMessage(
-                id++,
-                PacketOpenCosmeticMenu.class,
-                PacketOpenCosmeticMenu::toBytes,
-                PacketOpenCosmeticMenu::new,
+        registrar.playToServer(
+                PacketOpenCosmeticMenu.TYPE,
+                PacketOpenCosmeticMenu.STREAM_CODEC,
                 PacketOpenCosmeticMenu::handle
         );
 
         // 🔧 NEW: Handles granting "Let The Hunt Begin!" (Hunting Mode)
-        CHANNEL.registerMessage(
-                id++,
-                PacketOpenHuntingMenu.class,
-                PacketOpenHuntingMenu::toBytes,
-                PacketOpenHuntingMenu::new,
+        registrar.playToServer(
+                PacketOpenHuntingMenu.TYPE,
+                PacketOpenHuntingMenu.STREAM_CODEC,
                 PacketOpenHuntingMenu::handle
         );
 
-        CHANNEL.registerMessage(
-                id++,
-                PacketUpdateHatStand.class,
-                PacketUpdateHatStand::encode,
-                PacketUpdateHatStand::decode,
+        registrar.playToServer(
+                PacketUpdateHatStand.TYPE,
+                PacketUpdateHatStand.STREAM_CODEC,
                 PacketUpdateHatStand::handle
         );
 
-        CHANNEL.registerMessage(
-                id++,
-                PacketOpenHatStand.class,
-                PacketOpenHatStand::encode,
-                PacketOpenHatStand::decode,
-                PacketOpenHatStand::handle
-        );
-
-        CHANNEL.registerMessage(
-                id++,
-                PacketSetLauncherHat.class,
-                PacketSetLauncherHat::encode,
-                PacketSetLauncherHat::decode,
+        registrar.playToServer(
+                PacketSetLauncherHat.TYPE,
+                PacketSetLauncherHat.STREAM_CODEC,
                 PacketSetLauncherHat::handle
         );
 
@@ -104,76 +76,50 @@ public class HatPacketHandler {
         // =====================
 
         // Syncs equipped hat state to the client
-        CHANNEL.registerMessage(
-                id++,
-                PacketSyncHat.class,
-                PacketSyncHat::encode,
-                PacketSyncHat::decode,
+        registrar.playToClient(
+                PacketSyncHat.TYPE,
+                PacketSyncHat.STREAM_CODEC,
                 PacketSyncHat::handle
         );
 
-        CHANNEL.registerMessage(
-                id++,
-                PacketHatUnlocked.class,
-                PacketHatUnlocked::encode,
-                PacketHatUnlocked::decode,
-                HatPacketHandler::handleHatUnlocked
+        registrar.playToClient(
+                PacketHatUnlocked.TYPE,
+                PacketHatUnlocked.STREAM_CODEC,
+                PacketHatUnlocked::handle
         );
 
         // Syncs the actual hat model part for rendering
-        CHANNEL.registerMessage(
-                id++,
-                PacketSyncHatPart.class,
-                PacketSyncHatPart::encode,
-                PacketSyncHatPart::decode,
+        registrar.playToClient(
+                PacketSyncHatPart.TYPE,
+                PacketSyncHatPart.STREAM_CODEC,
                 PacketSyncHatPart::handle
         );
 
-        registerTradePackets();
+        registrar.playToClient(
+                PacketOpenHatStand.TYPE,
+                PacketOpenHatStand.STREAM_CODEC,
+                PacketOpenHatStand::handle
+        );
+
+        registerTradePackets(registrar);
     }
 
-    private static void registerTradePackets() {
-        CHANNEL.registerMessage(id++, PacketRequestNearbyPlayers.class, PacketRequestNearbyPlayers::encode, PacketRequestNearbyPlayers::decode, PacketRequestNearbyPlayers::handle);
-        CHANNEL.registerMessage(id++, PacketRequestPeerInventory.class, PacketRequestPeerInventory::encode, PacketRequestPeerInventory::decode, PacketRequestPeerInventory::handle);
-        CHANNEL.registerMessage(id++, PacketSendTradeOffer.class, PacketSendTradeOffer::encode, PacketSendTradeOffer::decode, PacketSendTradeOffer::handle);
-        CHANNEL.registerMessage(id++, PacketRespondTradeOffer.class, PacketRespondTradeOffer::encode, PacketRespondTradeOffer::decode, PacketRespondTradeOffer::handle);
-        CHANNEL.registerMessage(id++, PacketCloseTradeBuilder.class, PacketCloseTradeBuilder::encode, PacketCloseTradeBuilder::decode, PacketCloseTradeBuilder::handle);
+    private static void registerTradePackets(PayloadRegistrar registrar) {
+        registrar.playToServer(PacketRequestNearbyPlayers.TYPE, PacketRequestNearbyPlayers.STREAM_CODEC, PacketRequestNearbyPlayers::handle);
+        registrar.playToServer(PacketRequestPeerInventory.TYPE, PacketRequestPeerInventory.STREAM_CODEC, PacketRequestPeerInventory::handle);
+        registrar.playToServer(PacketSendTradeOffer.TYPE, PacketSendTradeOffer.STREAM_CODEC, PacketSendTradeOffer::handle);
+        registrar.playToServer(PacketRespondTradeOffer.TYPE, PacketRespondTradeOffer.STREAM_CODEC, PacketRespondTradeOffer::handle);
+        registrar.playToServer(PacketCloseTradeBuilder.TYPE, PacketCloseTradeBuilder.STREAM_CODEC, PacketCloseTradeBuilder::handle);
 
-        CHANNEL.registerMessage(id++, PacketNearbyPlayersList.class, PacketNearbyPlayersList::encode, PacketNearbyPlayersList::decode, PacketNearbyPlayersList::handle);
-        CHANNEL.registerMessage(id++, PacketPeerInventory.class, PacketPeerInventory::encode, PacketPeerInventory::decode, PacketPeerInventory::handle);
-        CHANNEL.registerMessage(id++, PacketIncomingTradeOffer.class, PacketIncomingTradeOffer::encode, PacketIncomingTradeOffer::decode, PacketIncomingTradeOffer::handle);
-        CHANNEL.registerMessage(id++, PacketTradeResolved.class, PacketTradeResolved::encode, PacketTradeResolved::decode, PacketTradeResolved::handle);
-        CHANNEL.registerMessage(id++, PacketTradeOfferRevoked.class, PacketTradeOfferRevoked::encode, PacketTradeOfferRevoked::decode, PacketTradeOfferRevoked::handle);
-        CHANNEL.registerMessage(id++, PacketTradePartnerLeft.class, PacketTradePartnerLeft::encode, PacketTradePartnerLeft::decode, PacketTradePartnerLeft::handle);
-        CHANNEL.registerMessage(id++, PacketTradeError.class, PacketTradeError::encode, PacketTradeError::decode, PacketTradeError::handle);
-        CHANNEL.registerMessage(id++, PacketSetUnlockedHats.class, PacketSetUnlockedHats::encode, PacketSetUnlockedHats::decode, PacketSetUnlockedHats::handle);
-        CHANNEL.registerMessage(id++, PacketRehatify.class, PacketRehatify::encode, PacketRehatify::decode, PacketRehatify::handle);
-    }
-
-    /**
-     * Invoked only on the physical client when the S2C packet is received; uses reflection so this class has no
-     * compile-time dependency on client types (dedicated server must not load Toast / Minecraft.gui).
-     */
-    private static void handleHatUnlocked(PacketHatUnlocked msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> callClient(CLIENT_HAT_HANDLERS, "handleHatUnlocked",
-                new Class<?>[]{PacketHatUnlocked.class}, new Object[]{msg}));
-        context.setPacketHandled(true);
-    }
-
-    /**
-     * Loads a client class by name only when this process is a physical client.
-     * A direct reference would put {@code LocalPlayer} on the dedicated-server classpath.
-     */
-    public static void callClient(String className, String method, Class<?>[] types, Object[] args) {
-        if (FMLEnvironment.dist != Dist.CLIENT) {
-            return;
-        }
-        try {
-            Class.forName(className).getMethod(method, types).invoke(null, args);
-        } catch (Throwable t) {
-            Hats.LOGGER.error("Failed to handle client packet {}.{}", className, method, t);
-        }
+        registrar.playToClient(PacketNearbyPlayersList.TYPE, PacketNearbyPlayersList.STREAM_CODEC, PacketNearbyPlayersList::handle);
+        registrar.playToClient(PacketPeerInventory.TYPE, PacketPeerInventory.STREAM_CODEC, PacketPeerInventory::handle);
+        registrar.playToClient(PacketIncomingTradeOffer.TYPE, PacketIncomingTradeOffer.STREAM_CODEC, PacketIncomingTradeOffer::handle);
+        registrar.playToClient(PacketTradeResolved.TYPE, PacketTradeResolved.STREAM_CODEC, PacketTradeResolved::handle);
+        registrar.playToClient(PacketTradeOfferRevoked.TYPE, PacketTradeOfferRevoked.STREAM_CODEC, PacketTradeOfferRevoked::handle);
+        registrar.playToClient(PacketTradePartnerLeft.TYPE, PacketTradePartnerLeft.STREAM_CODEC, PacketTradePartnerLeft::handle);
+        registrar.playToClient(PacketTradeError.TYPE, PacketTradeError.STREAM_CODEC, PacketTradeError::handle);
+        registrar.playToClient(PacketSetUnlockedHats.TYPE, PacketSetUnlockedHats.STREAM_CODEC, PacketSetUnlockedHats::handle);
+        registrar.playToClient(PacketRehatify.TYPE, PacketRehatify.STREAM_CODEC, PacketRehatify::handle);
     }
 
     // =====================
@@ -181,10 +127,24 @@ public class HatPacketHandler {
     // =====================
 
     public static void sendToPlayer(ServerPlayer player, Object msg) {
-        CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
-                msg
-        );
+        PacketDistributor.sendToPlayer(player, (CustomPacketPayload) msg);
+    }
+
+    /**
+     * Client to server. The distributor lives in the client package, so it is loaded by name
+     * and only when this physical side is the client.
+     */
+    public static void sendToServer(CustomPacketPayload msg) {
+        if (FMLEnvironment.getDist() != Dist.CLIENT || msg == null) {
+            return;
+        }
+        try {
+            Class.forName("net.neoforged.neoforge.client.network.ClientPacketDistributor")
+                    .getMethod("sendToServer", CustomPacketPayload.class, CustomPacketPayload[].class)
+                    .invoke(null, msg, new CustomPacketPayload[0]);
+        } catch (Throwable t) {
+            Hats.LOGGER.error("Failed to send packet to server", t);
+        }
     }
 
     /**
@@ -195,11 +155,11 @@ public class HatPacketHandler {
         if (entity == null || entity.level().isClientSide()) {
             return;
         }
-        entity.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
-                CHANNEL.send(
-                        PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity),
-                        new PacketSyncHatPart(entity.getId(), part.serializeNBT())
-                ));
+        HatPart part = entity.getData(HatPartCapability.HAT_PART);
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(
+                entity,
+                new PacketSyncHatPart(entity.getId(), part.serializeNBT())
+        );
     }
 
     public static void syncPlayerHatPartToTracking(ServerPlayer player) {
@@ -213,8 +173,8 @@ public class HatPacketHandler {
         if (observer == null || hatOwner == null || observer.level().isClientSide()) {
             return;
         }
-        hatOwner.getCapability(HatPartCapability.HAT_PART).ifPresent(part ->
-                sendToPlayer(observer, new PacketSyncHatPart(hatOwner.getId(), part.serializeNBT())));
+        HatPart part = hatOwner.getData(HatPartCapability.HAT_PART);
+        sendToPlayer(observer, new PacketSyncHatPart(hatOwner.getId(), part.serializeNBT()));
     }
 
     public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {

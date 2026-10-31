@@ -1,20 +1,22 @@
 package com.astryxion.hats.common.capability;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.network.HatPacketHandler;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 /**
  * When a client starts tracking an entity, send that entity's hat. Without this,
  * hats live only in the custom slot on the server and never appear on the client.
  */
-@Mod.EventBusSubscriber(modid = Hats.MODID)
+@EventBusSubscriber(modid = Hats.MODID)
 public final class PlayerHatTrackingSync {
 
     private PlayerHatTrackingSync() {}

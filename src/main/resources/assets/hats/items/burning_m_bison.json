@@ -1,0 +1,12 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "hats:item/burning_m_bison",
+    "tints": [
+      {
+        "type": "hats:hat_color"
+      }
+    ]
+  },
+  "oversized_in_gui": true
+}

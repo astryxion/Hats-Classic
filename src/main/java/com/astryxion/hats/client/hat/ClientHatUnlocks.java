@@ -1,10 +1,11 @@
 package com.astryxion.hats.client.hat;
 
 import com.astryxion.hats.common.capability.HatDataCapability;
+import com.astryxion.hats.common.hat.PlayerHatData;
 import com.astryxion.hats.common.hat.PlayerHatDataImpl;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 
 import org.jetbrains.annotations.Nullable;
@@ -23,8 +24,8 @@ import java.util.Set;
 public final class ClientHatUnlocks {
 
     @Nullable
-    private static LinkedHashMap<ResourceLocation, Integer> counts;
-    private static final Set<ResourceLocation> recentlyGained = new LinkedHashSet<>();
+    private static LinkedHashMap<Identifier, Integer> counts;
+    private static final Set<Identifier> recentlyGained = new LinkedHashSet<>();
     private static int generation;
 
     private ClientHatUnlocks() {}
@@ -38,24 +39,23 @@ public final class ClientHatUnlocks {
             return;
         }
         counts = new LinkedHashMap<>();
-        player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
-            for (ResourceLocation id : data.getUnlockedHats()) {
-                counts.put(id, 1);
-            }
-        });
+        PlayerHatData data = player.getData(HatDataCapability.HAT_DATA);
+        for (Identifier id : data.getUnlockedHats()) {
+            counts.put(id, 1);
+        }
     }
 
-    public static void applySwap(Collection<ResourceLocation> gained, Collection<ResourceLocation> lost) {
+    public static void applySwap(Collection<Identifier> gained, Collection<Identifier> lost) {
         if (counts == null) {
             counts = new LinkedHashMap<>();
         }
         if (lost != null) {
-            for (ResourceLocation id : lost) {
+            for (Identifier id : lost) {
                 increment(id, -1);
             }
         }
         if (gained != null) {
-            for (ResourceLocation id : gained) {
+            for (Identifier id : gained) {
                 increment(id, 1);
                 recentlyGained.add(id);
             }
@@ -64,9 +64,9 @@ public final class ClientHatUnlocks {
     }
 
     public static void acceptTrade(
-            Collection<ResourceLocation> gained,
-            Collection<ResourceLocation> lost,
-            Collection<ResourceLocation> serverUnlocked
+            Collection<Identifier> gained,
+            Collection<Identifier> lost,
+            Collection<Identifier> serverUnlocked
     ) {
         applySwap(gained, lost);
         if (serverUnlocked != null && !serverUnlocked.isEmpty() && containsAll(serverUnlocked, gained)) {
@@ -74,15 +74,15 @@ public final class ClientHatUnlocks {
         }
     }
 
-    public static void forceSet(Collection<ResourceLocation> ids) {
+    public static void forceSet(Collection<Identifier> ids) {
         forceSet(ids, null);
     }
 
-    public static void forceSet(Collection<ResourceLocation> ids, @Nullable List<Integer> amounts) {
-        LinkedHashMap<ResourceLocation, Integer> next = new LinkedHashMap<>();
+    public static void forceSet(Collection<Identifier> ids, @Nullable List<Integer> amounts) {
+        LinkedHashMap<Identifier, Integer> next = new LinkedHashMap<>();
         if (ids != null) {
             int index = 0;
-            for (ResourceLocation id : ids) {
+            for (Identifier id : ids) {
                 int amount = 1;
                 if (amounts != null && index < amounts.size()) {
                     amount = Math.max(0, amounts.get(index));
@@ -98,13 +98,13 @@ public final class ClientHatUnlocks {
         generation++;
     }
 
-    public static void forceSetIfComplete(Collection<ResourceLocation> ids, Collection<ResourceLocation> required) {
+    public static void forceSetIfComplete(Collection<Identifier> ids, Collection<Identifier> required) {
         forceSetIfComplete(ids, required, null);
     }
 
     public static void forceSetIfComplete(
-            Collection<ResourceLocation> ids,
-            Collection<ResourceLocation> required,
+            Collection<Identifier> ids,
+            Collection<Identifier> required,
             @Nullable List<Integer> amounts
     ) {
         if (ids == null) {
@@ -116,7 +116,7 @@ public final class ClientHatUnlocks {
         forceSet(ids, amounts);
     }
 
-    public static void set(Collection<ResourceLocation> ids) {
+    public static void set(Collection<Identifier> ids) {
         if (ids == null || missingRecent(ids)) {
             return;
         }
@@ -142,23 +142,23 @@ public final class ClientHatUnlocks {
         return counts != null;
     }
 
-    public static boolean has(ResourceLocation id) {
+    public static boolean has(Identifier id) {
         return count(id) > 0;
     }
 
-    public static int count(ResourceLocation id) {
+    public static int count(Identifier id) {
         return counts == null || id == null ? 0 : counts.getOrDefault(id, 0);
     }
 
-    public static Set<ResourceLocation> all() {
+    public static Set<Identifier> all() {
         return counts == null ? Set.of() : Collections.unmodifiableSet(counts.keySet());
     }
 
-    public static Map<ResourceLocation, Integer> allCounts() {
+    public static Map<Identifier, Integer> allCounts() {
         return counts == null ? Map.of() : Collections.unmodifiableMap(counts);
     }
 
-    private static void increment(ResourceLocation id, int delta) {
+    private static void increment(Identifier id, int delta) {
         if (id == null || counts == null) {
             return;
         }
@@ -170,11 +170,11 @@ public final class ClientHatUnlocks {
         }
     }
 
-    private static boolean missingRecent(Collection<ResourceLocation> ids) {
+    private static boolean missingRecent(Collection<Identifier> ids) {
         return !recentlyGained.isEmpty() && !containsAll(ids, recentlyGained);
     }
 
-    private static boolean containsAll(Collection<ResourceLocation> ids, Collection<ResourceLocation> required) {
+    private static boolean containsAll(Collection<Identifier> ids, Collection<Identifier> required) {
         if (required == null || required.isEmpty()) {
             return true;
         }

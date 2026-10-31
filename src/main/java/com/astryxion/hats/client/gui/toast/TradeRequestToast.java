@@ -2,9 +2,10 @@ package com.astryxion.hats.client.gui.toast;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
-import net.minecraft.client.gui.components.toasts.ToastComponent;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import net.minecraft.network.chat.Component;
 
 public class TradeRequestToast implements Toast {
@@ -15,6 +16,7 @@ public class TradeRequestToast implements Toast {
 
     private final String senderName;
     private long startTime = -1;
+    private Toast.Visibility wantedVisibility = Toast.Visibility.HIDE;
 
     public TradeRequestToast(String senderName) {
         this.senderName = senderName;
@@ -31,18 +33,25 @@ public class TradeRequestToast implements Toast {
     }
 
     @Override
-    public Visibility render(GuiGraphics graphics, ToastComponent toasts, long timeSinceLastVisible) {
-        if (startTime < 0) {
-            startTime = timeSinceLastVisible;
-        }
-        long elapsed = timeSinceLastVisible - startTime;
+    public Toast.Visibility getWantedVisibility() {
+        return wantedVisibility;
+    }
+
+    @Override
+    public void update(ToastManager manager, long fullyVisibleForMs) {
+        long elapsed = elapsed(fullyVisibleForMs);
+        wantedVisibility = elapsed >= DISPLAY_TIME_MS ? Toast.Visibility.HIDE : Toast.Visibility.SHOW;
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, Font font, long fullyVisibleForMs) {
+        long elapsed = elapsed(fullyVisibleForMs);
         graphics.fill(0, 0, WIDTH, HEIGHT, 0xFF202020);
         graphics.fill(1, 1, WIDTH - 1, HEIGHT - 1, 0xFF2B2B2B);
-        Minecraft minecraft = toasts.getMinecraft();
-        graphics.drawString(minecraft.font,
+        graphics.text(font,
                 Component.translatable("hats.trade.requestBy").withStyle(ChatFormatting.GOLD),
-                6, 6, 0xFFAA00, false);
-        graphics.drawString(minecraft.font,
+                6, 6, 0xFFFFAA00, false);
+        graphics.text(font,
                 Component.literal(senderName).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD),
                 6, 18, 0xFF55FF55, false);
         int barY = HEIGHT - 3;
@@ -54,10 +63,16 @@ public class TradeRequestToast implements Toast {
         if (filled > 0) {
             graphics.fill(barX, barY, barX + filled, barY + 2, 0xFFFFAA00);
         }
-        return elapsed >= DISPLAY_TIME_MS ? Visibility.HIDE : Visibility.SHOW;
+    }
+
+    private long elapsed(long fullyVisibleForMs) {
+        if (startTime < 0) {
+            startTime = fullyVisibleForMs;
+        }
+        return fullyVisibleForMs - startTime;
     }
 
     public static void show(String senderName) {
-        Minecraft.getInstance().getToasts().addToast(new TradeRequestToast(senderName));
+        Minecraft.getInstance().gui.toastManager().addToast(new TradeRequestToast(senderName));
     }
 }

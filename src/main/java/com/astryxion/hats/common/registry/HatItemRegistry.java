@@ -1,17 +1,21 @@
 package com.astryxion.hats.common.registry;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.hat.HatItem;
 import com.astryxion.hats.common.tabula.TabulaHatDefinition;
 import com.astryxion.hats.common.tabula.TabulaHats;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
@@ -24,7 +28,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 /**
@@ -38,10 +44,10 @@ import java.util.stream.Stream;
 public final class HatItemRegistry {
 
     public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(ForgeRegistries.ITEMS, Hats.MODID);
+            DeferredRegister.create(BuiltInRegistries.ITEM, Hats.MODID);
 
     /** All registered hats (registry objects) */
-    public static final List<RegistryObject<Item>> ALL_HATS = new ArrayList<>();
+    public static final List<DeferredHolder<Item, Item>> ALL_HATS = new ArrayList<>();
 
     /** Names to skip (dev junk / parents / icons) */
     private static final Set<String> BLACKLIST = Set.of(
@@ -103,7 +109,7 @@ public final class HatItemRegistry {
                 "adv_icon_personalise",
                 "adv_icon_three"
         )) {
-            ITEMS.register(name, () -> new Item(new Item.Properties()));
+            ITEMS.register(name, id -> new Item(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id))));
         }
     }
 
@@ -115,7 +121,7 @@ public final class HatItemRegistry {
 
         List<Item> hats = new ArrayList<>();
 
-        for (RegistryObject<Item> reg : ALL_HATS) {
+        for (DeferredHolder<Item, Item> reg : ALL_HATS) {
             hats.add(reg.get());
         }
 
@@ -131,40 +137,29 @@ public final class HatItemRegistry {
         try {
             Set<String> reserved = new LinkedHashSet<>(BLACKLIST);
 
-            Path modelsPath = getResourcePath(
-                    "assets/" + Hats.MODID + "/models/item"
-            );
-
-            if (modelsPath == null || !Files.exists(modelsPath)) {
+            Map<String, String> models = listItemModels();
+            if (models.isEmpty()) {
                 Hats.LOGGER.error("Hat models folder not found!");
             } else {
-                try (Stream<Path> list = Files.list(modelsPath)) {
-                    list.filter(p -> p.toString().endsWith(".json"))
-                            .sorted()
-                            .forEach(path -> {
+                for (Map.Entry<String, String> entry : models.entrySet()) {
+                    String name = entry.getKey();
+                    if (BLACKLIST.contains(name) || isTabulaItemModel(entry.getValue())) {
+                        continue;
+                    }
 
-                                String name = path.getFileName()
-                                        .toString()
-                                        .replace(".json", "");
+                    DeferredHolder<Item, Item> item = ITEMS.register(
+                            name,
+                            () -> new HatItem(name)
+                    );
 
-                                if (BLACKLIST.contains(name) || isTabulaItemModel(path)) {
-                                    return;
-                                }
-
-                                RegistryObject<Item> item = ITEMS.register(
-                                        name,
-                                        () -> new HatItem(name)
-                                );
-
-                                ALL_HATS.add(item);
-                                reserved.add(name);
-                            });
+                    ALL_HATS.add(item);
+                    reserved.add(name);
                 }
             }
 
             int jsonCount = ALL_HATS.size();
             for (TabulaHatDefinition def : TabulaHats.discover(reserved)) {
-                RegistryObject<Item> item = ITEMS.register(
+                DeferredHolder<Item, Item> item = ITEMS.register(
                         def.id,
                         () -> new HatItem(def.id, def.relativePath)
                 );
@@ -179,13 +174,67 @@ public final class HatItemRegistry {
         }
     }
 
-    private static boolean isTabulaItemModel(Path path) {
+    private static boolean isTabulaItemModel(String text) {
+        return text.contains("hats:item/tabula_hat")
+                || text.contains("minecraft:builtin/entity");
+    }
+
+    private static Map<String, String> listItemModels() {
+        Map<String, String> models = new TreeMap<>();
+        var contents = modContents();
+        if (contents != null) {
+            String prefix = "assets/" + Hats.MODID + "/models/item/";
+            contents.visitContent(prefix, (relativePath, resource) -> {
+                if (!relativePath.startsWith(prefix) || !relativePath.endsWith(".json")) {
+                    return;
+                }
+                String name = relativePath.substring(prefix.length());
+                if (name.indexOf('/') >= 0) {
+                    return;
+                }
+                name = name.substring(0, name.length() - ".json".length());
+                try {
+                    models.put(name, new String(resource.readAllBytes(), StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                    Hats.LOGGER.warn("Could not read hat model {}", relativePath);
+                }
+            });
+        }
+        if (!models.isEmpty()) {
+            return models;
+        }
+
         try {
-            String text = Files.readString(path);
-            return text.contains("hats:item/tabula_hat")
-                    || text.contains("minecraft:builtin/entity");
-        } catch (IOException e) {
-            return false;
+            Path modelsPath = getResourcePath("assets/" + Hats.MODID + "/models/item");
+            if (modelsPath == null || !Files.exists(modelsPath)) {
+                return models;
+            }
+            try (Stream<Path> list = Files.list(modelsPath)) {
+                for (Path path : list.filter(p -> p.toString().endsWith(".json")).sorted().toList()) {
+                    String name = path.getFileName().toString().replace(".json", "");
+                    try {
+                        models.put(name, Files.readString(path));
+                    } catch (IOException e) {
+                        Hats.LOGGER.warn("Could not read hat model {}", name);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Hats.LOGGER.error("Failed to scan hat models", e);
+        }
+        return models;
+    }
+
+    private static net.neoforged.fml.jarcontents.JarContents modContents() {
+        try {
+            var info = net.neoforged.fml.ModList.get().getModFileById(Hats.MODID);
+            if (info == null) {
+                return null;
+            }
+            return info.getFile().getContents();
+        } catch (Exception e) {
+            Hats.LOGGER.warn("Could not read hats mod jar", e);
+            return null;
         }
     }
 
@@ -200,7 +249,9 @@ public final class HatItemRegistry {
                 .getClassLoader()
                 .getResource(path);
 
-        if (url == null) return null;
+        if (url == null) {
+            return modContentPath(path);
+        }
 
         if (url.getProtocol().equals("jar")) {
             URI uri = url.toURI();
@@ -220,5 +271,19 @@ public final class HatItemRegistry {
             return fs.getPath(path);
         }
         return Paths.get(url.toURI());
+    }
+
+    private static Path modContentPath(String path) {
+        var info = net.neoforged.fml.ModList.get().getModFileById(Hats.MODID);
+        if (info == null) {
+            return null;
+        }
+        for (Path root : info.getFile().getContents().getContentRoots()) {
+            Path candidate = root.resolve(path);
+            if (Files.isDirectory(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 }

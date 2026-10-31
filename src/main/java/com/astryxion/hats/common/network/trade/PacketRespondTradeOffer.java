@@ -10,16 +10,23 @@ import com.astryxion.hats.common.trade.TradeHats;
 import com.astryxion.hats.common.trade.TradeOffer;
 import com.astryxion.hats.common.trade.TradeOfferStore;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketRespondTradeOffer {
+public class PacketRespondTradeOffer implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketRespondTradeOffer> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "respond_trade_offer"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketRespondTradeOffer> STREAM_CODEC =
+            StreamCodec.of(PacketRespondTradeOffer::encode, PacketRespondTradeOffer::decode);
 
     private final UUID offerId;
     private final boolean accepted;
@@ -29,19 +36,23 @@ public class PacketRespondTradeOffer {
         this.accepted = accepted;
     }
 
-    public static void encode(PacketRespondTradeOffer msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketRespondTradeOffer msg) {
         buf.writeUUID(msg.offerId);
         buf.writeBoolean(msg.accepted);
     }
 
-    public static PacketRespondTradeOffer decode(FriendlyByteBuf buf) {
+    public static PacketRespondTradeOffer decode(RegistryFriendlyByteBuf buf) {
         return new PacketRespondTradeOffer(buf.readUUID(), buf.readBoolean());
     }
 
-    public static void handle(PacketRespondTradeOffer msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> {
-            ServerPlayer responder = context.getSender();
+    public static void handle(PacketRespondTradeOffer msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer responder = (ServerPlayer) ctx.player();
             try {
                 resolve(msg, responder);
             } catch (Throwable t) {
@@ -52,11 +63,10 @@ public class PacketRespondTradeOffer {
                 }
             }
         });
-        context.setPacketHandled(true);
     }
 
     private static void resolve(PacketRespondTradeOffer msg, ServerPlayer responder) {
-        if (responder == null || responder.getServer() == null) {
+        if (responder == null || responder.level().getServer() == null) {
             return;
         }
             TradeOffer offer = TradeOfferStore.get().get(msg.offerId);
@@ -65,7 +75,7 @@ public class PacketRespondTradeOffer {
                 return;
             }
             if (!offer.receiverUuid.equals(responder.getUUID())
-                    && !offer.receiverName.equalsIgnoreCase(responder.getGameProfile().getName())) {
+                    && !offer.receiverName.equalsIgnoreCase(responder.getGameProfile().name())) {
                 HatTradeNetwork.send(responder, new PacketTradeError(TradeErrorType.OFFER_NOT_FOUND, ""));
                 return;
             }
@@ -76,10 +86,10 @@ public class PacketRespondTradeOffer {
                 return;
             }
 
-            ServerPlayer sender = responder.getServer().getPlayerList().getPlayer(offer.senderUuid);
+            ServerPlayer sender = responder.level().getServer().getPlayerList().getPlayer(offer.senderUuid);
             if (sender == null) {
-                for (ServerPlayer online : responder.getServer().getPlayerList().getPlayers()) {
-                    if (offer.senderName.equalsIgnoreCase(online.getGameProfile().getName())) {
+                for (ServerPlayer online : responder.level().getServer().getPlayerList().getPlayers()) {
+                    if (offer.senderName.equalsIgnoreCase(online.getGameProfile().name())) {
                         sender = online;
                         break;
                     }
@@ -110,15 +120,15 @@ public class PacketRespondTradeOffer {
             store.ensureSeeded(sender);
             store.ensureSeeded(responder);
 
-            ResourceLocation senderEquipped = TradeHats.equippedId(sender);
-            ResourceLocation receiverEquipped = TradeHats.equippedId(responder);
+            Identifier senderEquipped = TradeHats.equippedId(sender);
+            Identifier receiverEquipped = TradeHats.equippedId(responder);
             if (!stillOwned(responder, sender, offer, sender, store, offer.senderHats, true)
                     || !stillOwned(responder, sender, offer, responder, store, offer.receiverHats, false)) {
                 return;
             }
 
-            ResourceLocation senderSavedEquipped = senderEquipped;
-            ResourceLocation receiverSavedEquipped = receiverEquipped;
+            Identifier senderSavedEquipped = senderEquipped;
+            Identifier receiverSavedEquipped = receiverEquipped;
             if (senderEquipped != null && offer.senderHats.contains(senderEquipped)
                     && store.count(sender, senderEquipped) <= 1) {
                 HatManager.clearHat(sender);
@@ -130,18 +140,18 @@ public class PacketRespondTradeOffer {
                 receiverSavedEquipped = null;
             }
 
-            for (ResourceLocation id : offer.senderHats) {
+            for (Identifier id : offer.senderHats) {
                 store.take(sender, id);
                 store.add(responder, id);
             }
-            for (ResourceLocation id : offer.receiverHats) {
+            for (Identifier id : offer.receiverHats) {
                 store.take(responder, id);
                 store.add(sender, id);
             }
 
             TradeOfferStore.get().remove(msg.offerId);
-            List<ResourceLocation> senderUnlocked = List.copyOf(store.copy(sender));
-            List<ResourceLocation> receiverUnlocked = List.copyOf(store.copy(responder));
+            List<Identifier> senderUnlocked = List.copyOf(store.copy(sender));
+            List<Identifier> receiverUnlocked = List.copyOf(store.copy(responder));
             HatPacketHandler.syncPlayerHatPartToTracking(sender);
             HatPacketHandler.syncPlayerHatPartToTracking(responder);
             HatTradeNetwork.send(sender, new PacketTradeResolved(
@@ -166,10 +176,10 @@ public class PacketRespondTradeOffer {
             TradeOffer offer,
             ServerPlayer owner,
             com.astryxion.hats.common.data.ServerHatUnlocks store,
-            List<ResourceLocation> hats,
+            List<Identifier> hats,
             boolean senderSide
     ) {
-        for (ResourceLocation id : hats) {
+        for (Identifier id : hats) {
             if (!TradeHats.isHat(id)
                     || (Config.hatMode != HatMode.COSMETIC
                     && !store.has(owner, id)

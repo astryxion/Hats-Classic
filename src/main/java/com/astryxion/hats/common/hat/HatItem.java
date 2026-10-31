@@ -1,21 +1,19 @@
 package com.astryxion.hats.common.hat;
 
-import com.astryxion.hats.client.tabula.TabulaHatClientExtensions;
+import com.astryxion.hats.Config;
+import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.tabula.TabulaHatDefinition;
 import com.astryxion.hats.common.tabula.TabulaHats;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.fml.DistExecutor;
-
 import org.jetbrains.annotations.Nullable;
-
-import java.util.function.Consumer;
 
 public class HatItem extends Item {
 
@@ -27,7 +25,9 @@ public class HatItem extends Item {
     }
 
     public HatItem(String hatId, String tabulaPath) {
-        super(new Item.Properties().stacksTo(1));
+        super(new Item.Properties()
+                .setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(Hats.MODID, hatId)))
+                .stacksTo(1));
         this.hatId = hatId;
         this.tabulaPath = tabulaPath;
     }
@@ -55,15 +55,13 @@ public class HatItem extends Item {
     }
 
     @Override
-    public Component getDescription() {
-        Component named = tabulaDisplayName();
-        return named != null ? named : super.getDescription();
-    }
-
-    @Override
     public Component getName(ItemStack stack) {
         Component named = tabulaDisplayName();
-        return named != null ? named : super.getName(stack);
+        Component base = named != null ? named : super.getName(stack);
+        if (!Config.showRarityColorsEverywhere) {
+            return base;
+        }
+        return base.copy().withStyle(style -> style.withColor(getHatRarity().getColor()));
     }
 
     @Nullable
@@ -88,20 +86,14 @@ public class HatItem extends Item {
     }
 
     @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        if (tabulaPath == null) {
-            return;
-        }
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> TabulaHatClientExtensions.register(consumer));
-    }
-
-    @Override
     public boolean isFoil(ItemStack stack) {
         return HatGlint.get(stack) || super.isFoil(stack);
     }
 
-    @Override
     public Rarity getRarity(ItemStack stack) {
+        if (!Config.showRarityColorsEverywhere) {
+            return Rarity.COMMON;
+        }
         HatRarity rarity = getHatRarity();
 
         return switch (rarity) {

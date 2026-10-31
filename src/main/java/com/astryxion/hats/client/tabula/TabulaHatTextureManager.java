@@ -5,7 +5,7 @@ import com.astryxion.hats.common.tabula.TabulaHatDefinition;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
@@ -13,11 +13,11 @@ import java.util.Map;
 
 public final class TabulaHatTextureManager {
 
-    private static final Map<String, ResourceLocation> CACHE = new HashMap<>();
+    private static final Map<String, Identifier> CACHE = new HashMap<>();
 
     private TabulaHatTextureManager() {}
 
-    public static ResourceLocation getTexture(TabulaHatDefinition def) {
+    public static Identifier getTexture(TabulaHatDefinition def) {
         if (def == null) {
             return null;
         }
@@ -28,12 +28,12 @@ public final class TabulaHatTextureManager {
         return CACHE.computeIfAbsent(def.id, id -> upload(id, png));
     }
 
-    private static ResourceLocation upload(String id, byte[] pngBytes) {
+    private static Identifier upload(String id, byte[] pngBytes) {
         try {
             com.mojang.blaze3d.platform.NativeImage image =
                     com.mojang.blaze3d.platform.NativeImage.read(new ByteArrayInputStream(pngBytes));
-            DynamicTexture texture = new DynamicTexture(image);
-            ResourceLocation location = new ResourceLocation(Hats.MODID, "dynamic/tabula/" + Integer.toUnsignedString(id.hashCode()));
+            DynamicTexture texture = new DynamicTexture(() -> "hats_tabula_" + id, image);
+            Identifier location = Identifier.fromNamespaceAndPath(Hats.MODID, "dynamic/tabula/" + Integer.toUnsignedString(id.hashCode()));
             Minecraft.getInstance().getTextureManager().register(location, texture);
             return location;
         } catch (Exception e) {
@@ -43,7 +43,7 @@ public final class TabulaHatTextureManager {
     }
 
     public static void clearAll() {
-        for (ResourceLocation loc : CACHE.values()) {
+        for (Identifier loc : CACHE.values()) {
             Minecraft.getInstance().getTextureManager().release(loc);
         }
         CACHE.clear();

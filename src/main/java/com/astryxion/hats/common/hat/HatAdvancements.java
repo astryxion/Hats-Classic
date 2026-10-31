@@ -3,8 +3,8 @@ package com.astryxion.hats.common.hat;
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.data.ServerHatUnlocks;
 
-import net.minecraft.advancements.Advancement;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -22,17 +22,17 @@ public final class HatAdvancements {
     private HatAdvancements() {}
 
     public static void award(ServerPlayer player, String path) {
-        if (player == null || player.getServer() == null || path == null) {
+        if (player == null || player.level().getServer() == null || path == null) {
             return;
         }
-        Advancement advancement = player.getServer().getAdvancements()
-                .getAdvancement(new ResourceLocation(Hats.MODID, path));
+        AdvancementHolder advancement = player.level().getServer().getAdvancements()
+                .get(Identifier.fromNamespaceAndPath(Hats.MODID, path));
         if (advancement != null) {
             player.getAdvancements().award(advancement, "unlock_via_code");
         }
     }
 
-    public static void onUnlockCounts(ServerPlayer player, ResourceLocation hatId) {
+    public static void onUnlockCounts(ServerPlayer player, Identifier hatId) {
         if (player == null || hatId == null) {
             return;
         }

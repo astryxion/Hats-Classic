@@ -1,22 +1,24 @@
 package com.astryxion.hats.common.hat;
 
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.network.HatPacketHandler;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.item.equipment.Equippable;
 
 public final class HatManager {
 
     private HatManager() {}
 
     public static HatPart get(LivingEntity entity) {
-        return entity.getCapability(HatPartCapability.HAT_PART).orElse(null);
+        return entity.getData(HatPartCapability.HAT_PART);
     }
 
     /**
@@ -114,12 +116,12 @@ public final class HatManager {
         return !getHatStack(entity).isEmpty();
     }
 
-    public static ResourceLocation getEquippedHatId(LivingEntity entity) {
+    public static Identifier getEquippedHatId(LivingEntity entity) {
         ItemStack stack = getHatStack(entity);
         if (stack.isEmpty()) {
             return null;
         }
-        return ForgeRegistries.ITEMS.getKey(stack.getItem());
+        return BuiltInRegistries.ITEM.getKey(stack.getItem());
     }
 
     /**
@@ -130,13 +132,12 @@ public final class HatManager {
             return false;
         }
 
-        if (stack.getItem() instanceof ArmorItem armor) {
-            if (armor.getEquipmentSlot() == EquipmentSlot.HEAD) {
-                return false;
-            }
+        Equippable equippable = stack.get(DataComponents.EQUIPPABLE);
+        if (equippable != null && equippable.slot() == EquipmentSlot.HEAD) {
+            return false;
         }
 
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return id != null && id.getNamespace().equals(Hats.MODID);
     }
 

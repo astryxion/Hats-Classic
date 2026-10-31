@@ -3,6 +3,8 @@ package com.astryxion.hats.common.network.trade;
 import com.astryxion.hats.common.network.HatPacketHandler;
 
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 public final class HatTradeNetwork {
 
@@ -12,11 +14,10 @@ public final class HatTradeNetwork {
         if (player == null) {
             return;
         }
-        HatPacketHandler.sendToPlayer(player, packet);
-        HatPacketHandler.callClient(
-                "com.astryxion.hats.client.trade.ClientTradePackets",
-                "deliverIfLocalHost",
-                new Class<?>[]{ServerPlayer.class, Object.class},
-                new Object[]{player, packet});
+        Object outbound = packet instanceof PacketTradeError error ? new PacketTradeError.Payload(error) : packet;
+        HatPacketHandler.sendToPlayer(player, outbound);
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
+            com.astryxion.hats.client.trade.ClientTradePackets.deliverIfLocalHost(player, packet);
+        }
     }
 }

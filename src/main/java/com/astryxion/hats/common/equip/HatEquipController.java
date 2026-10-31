@@ -1,15 +1,16 @@
 package com.astryxion.hats.common.equip;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.PacketEquipHat;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.registries.ForgeRegistries;
 
 /**
  * Handles all hat equip/unequip logic
@@ -36,10 +37,10 @@ public final class HatEquipController {
         if (player == null || stack.isEmpty())
             return;
 
-        if (ForgeRegistries.ITEMS.getKey(stack.getItem()) == null)
+        if (BuiltInRegistries.ITEM.getKey(stack.getItem()) == null)
             return;
 
-        HatPacketHandler.CHANNEL.sendToServer(
+        HatPacketHandler.sendToServer(
                 new PacketEquipHat(stack)
         );
 
@@ -55,7 +56,7 @@ public final class HatEquipController {
         if (player == null)
             return;
 
-        HatPacketHandler.CHANNEL.sendToServer(
+        HatPacketHandler.sendToServer(
                 new PacketEquipHat("none")
         );
 

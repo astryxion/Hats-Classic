@@ -1,7 +1,9 @@
 package com.astryxion.hats.common.hat;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 
 /**
  * RGB color stored on an equipped hat stack. Hat models opt into coloring with
@@ -16,10 +18,11 @@ public final class HatColor {
     private HatColor() {}
 
     public static int get(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) {
+        if (stack == null || stack.isEmpty() || !stack.has(DataComponents.CUSTOM_DATA)) {
             return DEFAULT;
         }
-        return stack.getTag().contains(TAG) ? stack.getTag().getInt(TAG) & 0xFFFFFF : DEFAULT;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.contains(TAG) ? tag.getIntOr(TAG, 0) & 0xFFFFFF : DEFAULT;
     }
 
     public static void set(ItemStack stack, int red, int green, int blue) {
@@ -32,7 +35,7 @@ public final class HatColor {
         }
         int color = (clamp(red) << 16) | (clamp(green) << 8) | clamp(blue);
         int clampedAlpha = clamp(alpha);
-        CompoundTag tag = stack.getOrCreateTag();
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (color == DEFAULT) {
             tag.remove(TAG);
         } else {
@@ -44,7 +47,9 @@ public final class HatColor {
             tag.putInt(ALPHA_TAG, clampedAlpha);
         }
         if (tag.isEmpty()) {
-            stack.setTag(null);
+            stack.remove(DataComponents.CUSTOM_DATA);
+        } else {
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         }
     }
 
@@ -61,10 +66,11 @@ public final class HatColor {
     }
 
     public static int alpha(ItemStack stack) {
-        if (stack == null || stack.isEmpty() || !stack.hasTag()) {
+        if (stack == null || stack.isEmpty() || !stack.has(DataComponents.CUSTOM_DATA)) {
             return 255;
         }
-        return stack.getTag().contains(ALPHA_TAG) ? clamp(stack.getTag().getInt(ALPHA_TAG)) : 255;
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        return tag.contains(ALPHA_TAG) ? clamp(tag.getIntOr(ALPHA_TAG, 255)) : 255;
     }
 
     public static int argb(ItemStack stack) {

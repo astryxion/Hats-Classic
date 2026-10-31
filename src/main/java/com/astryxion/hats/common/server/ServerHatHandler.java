@@ -1,19 +1,21 @@
 package com.astryxion.hats.common.server;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.capability.HatDataCapability;
 import com.astryxion.hats.common.hat.HatAdvancements;
 import com.astryxion.hats.common.hat.HatManager;
+import com.astryxion.hats.common.hat.PlayerHatData;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.PacketSyncHat;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.registries.ForgeRegistries;
 
 /**
  * Server-side hat equip + sync handler
@@ -27,8 +29,8 @@ public final class ServerHatHandler {
     // =========================
 
     public static void handleEquip(ServerPlayer player, String hatId) {
-        ResourceLocation id = ResourceLocation.tryParse(hatId);
-        Item item = id != null ? ForgeRegistries.ITEMS.getValue(id) : null;
+        Identifier id = Identifier.tryParse(hatId);
+        Item item = id != null ? BuiltInRegistries.ITEM.getValue(id) : null;
         handleEquip(player, item == null || "none".equals(hatId) ? ItemStack.EMPTY : new ItemStack(item));
     }
 
@@ -47,14 +49,13 @@ public final class ServerHatHandler {
             HatPacketHandler.syncPlayerHatPartToTracking(player);
 
             // 🔧 FIXED: Tell the capability memory we are wearing nothing
-            player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
-                data.setEquippedHat(null); // Clear the saved hat
+            PlayerHatData data = player.getData(HatDataCapability.HAT_DATA);
+            data.setEquippedHat(null);
 
-                HatPacketHandler.sendToPlayer(
-                        player,
-                        new PacketSyncHat(data.serializeNBT())
-                );
-            });
+            HatPacketHandler.sendToPlayer(
+                    player,
+                    new PacketSyncHat(data.serializeNBT())
+            );
 
             return;
         }
@@ -64,7 +65,7 @@ public final class ServerHatHandler {
         // =====================
 
         Item item = requestedHat.getItem();
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        Identifier id = BuiltInRegistries.ITEM.getKey(item);
         if (id == null || !Hats.MODID.equals(id.getNamespace()))
             return;
 
@@ -76,14 +77,12 @@ public final class ServerHatHandler {
         HatAdvancements.onEquip(player, stack);
 
         // 🔧 FIXED: Tell the capability memory exactly which hat we are wearing
-        player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
-            data.setEquippedHat(id); // Save the hat ID to capability memory
+        PlayerHatData data = player.getData(HatDataCapability.HAT_DATA);
+        data.setEquippedHat(id);
 
-            // Sync FULL capability data (This ensures the GUI stays in sync)
-            HatPacketHandler.sendToPlayer(
-                    player,
-                    new PacketSyncHat(data.serializeNBT())
-            );
-        });
+        HatPacketHandler.sendToPlayer(
+                player,
+                new PacketSyncHat(data.serializeNBT())
+        );
     }
 }

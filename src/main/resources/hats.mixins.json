@@ -2,9 +2,8 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.astryxion.hats.mixin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_25",
   "plugin": "com.astryxion.hats.mixin.HatsMixinPlugin",
-  "refmap": "hats.refmap.json",
   "mixins": [
     "LivingEntityTickMixin"
   ],

@@ -3,7 +3,6 @@ package com.astryxion.hats.client.render;
 import com.astryxion.hats.common.hatstand.HatStandEntity;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
@@ -12,14 +11,16 @@ import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 
-public class HatStandModel extends EntityModel<HatStandEntity> {
+public class HatStandModel extends EntityModel<EntityRenderState> {
 
     private final ModelPart plate;
     private final ModelPart rod;
     private final ModelPart head;
 
     public HatStandModel(ModelPart root) {
+        super(root);
         plate = root.getChild("plate");
         rod = plate.getChild("rod");
         head = rod.getChild("head");
@@ -57,15 +58,8 @@ public class HatStandModel extends EntityModel<HatStandEntity> {
     }
 
     @Override
-    public void setupAnim(HatStandEntity entity, float limbSwing, float limbSwingAmount,
-            float ageInTicks, float netHeadYaw, float headPitch) {
-        head.yRot = netHeadYaw * ((float) Math.PI / 180F);
-        head.xRot = headPitch * ((float) Math.PI / 180F);
-    }
-
-    @Override
-    public void renderToBuffer(PoseStack stack, VertexConsumer consumer, int light, int overlay,
-            float red, float green, float blue, float alpha) {
-        plate.render(stack, consumer, light, overlay, red, green, blue, alpha);
+    public void setupAnim(EntityRenderState state) {
+        head.yRot = 0.0F;
+        head.xRot = 0.0F;
     }
 }

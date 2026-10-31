@@ -1,7 +1,7 @@
 package com.astryxion.hats.client.gui.widget;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
@@ -26,17 +26,17 @@ public class HatsButton extends Button {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+    protected void extractContents(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         HatsWidgets.renderMinecraftStyleButton(gfx, getX(), getY(), getWidth(), getHeight(), buttonState());
         renderLabel(gfx);
     }
 
-    protected void renderLabel(GuiGraphics gfx) {
+    protected void renderLabel(GuiGraphicsExtractor gfx) {
         if (getMessage().getString().isEmpty()) {
             return;
         }
         var font = Minecraft.getInstance().font;
-        int color = active ? 0xFFFFFF : 0xA0A0A0;
-        gfx.drawCenteredString(font, getMessage(), getX() + getWidth() / 2, getY() + (getHeight() - 8) / 2, color);
+        int color = active ? 0xFFFFFFFF : 0xFFA0A0A0;
+        gfx.centeredText(font, getMessage(), getX() + getWidth() / 2, getY() + (getHeight() - 8) / 2, color);
     }
 }

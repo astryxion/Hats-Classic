@@ -1,5 +1,7 @@
 package com.astryxion.hats.common.launcher;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.Config;
 import com.astryxion.hats.common.data.ServerHatUnlocks;
 import com.astryxion.hats.common.hat.HatManager;
@@ -7,7 +9,10 @@ import com.astryxion.hats.common.hat.HatMode;
 import com.astryxion.hats.common.hatstand.HatStandEntity;
 import com.astryxion.hats.common.trade.TradeHats;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -15,7 +20,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -44,24 +48,26 @@ public final class HatLaunch {
     }
 
     public static String storedId(ItemStack stack) {
-        if (stack.isEmpty() || !stack.hasTag()) {
+        if (stack.isEmpty() || !stack.has(DataComponents.CUSTOM_DATA)) {
             return RANDOM_ID;
         }
-        String value = stack.getTag().getString(NBT_HAT);
+        String value = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getStringOr(NBT_HAT, "");
         return value.isEmpty() ? RANDOM_ID : value;
     }
 
     public static void storeId(ItemStack stack, String id) {
-        stack.getOrCreateTag().putString(NBT_HAT, id == null || id.isEmpty() ? RANDOM_ID : id);
+        CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        tag.putString(NBT_HAT, id == null || id.isEmpty() ? RANDOM_ID : id);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
     @Nullable
-    public static ResourceLocation resolve(ServerPlayer player, ItemStack launcher) {
+    public static Identifier resolve(ServerPlayer player, ItemStack launcher) {
         String stored = storedId(launcher);
         if (RANDOM_ID.equals(stored)) {
             return randomOwned(player);
         }
-        ResourceLocation id = ResourceLocation.tryParse(stored);
+        Identifier id = Identifier.tryParse(stored);
         if (id == null || !TradeHats.isHat(id)) {
             return null;
         }
@@ -71,7 +77,7 @@ public final class HatLaunch {
         return playerHasHat(player, id, true) ? id : null;
     }
 
-    public static boolean playerHasHat(ServerPlayer player, ResourceLocation id, boolean minusWearing) {
+    public static boolean playerHasHat(ServerPlayer player, Identifier id, boolean minusWearing) {
         if (!useInventory(player)) {
             return TradeHats.isHat(id);
         }
@@ -83,12 +89,12 @@ public final class HatLaunch {
     }
 
     @Nullable
-    public static ResourceLocation randomOwned(ServerPlayer player) {
-        List<ResourceLocation> source = new ArrayList<>();
+    public static Identifier randomOwned(ServerPlayer player) {
+        List<Identifier> source = new ArrayList<>();
         if (useInventory(player)) {
-            ResourceLocation wearing = TradeHats.equippedId(player);
+            Identifier wearing = TradeHats.equippedId(player);
             ServerHatUnlocks store = ServerHatUnlocks.get(player);
-            for (ResourceLocation id : store.copy(player)) {
+            for (Identifier id : store.copy(player)) {
                 int available = store.count(player, id);
                 if (id.equals(wearing)) {
                     available--;
@@ -98,8 +104,8 @@ public final class HatLaunch {
                 }
             }
         } else {
-            for (var item : ForgeRegistries.ITEMS.getValues()) {
-                ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+            for (var item : BuiltInRegistries.ITEM.stream().toList()) {
+                Identifier id = BuiltInRegistries.ITEM.getKey(item);
                 if (TradeHats.isHat(id)) {
                     source.add(id);
                 }
@@ -111,28 +117,28 @@ public final class HatLaunch {
         return source.get(player.getRandom().nextInt(source.size()));
     }
 
-    public static void consume(ServerPlayer player, ResourceLocation id) {
+    public static void consume(ServerPlayer player, Identifier id) {
         if (useInventory(player)) {
             ServerHatUnlocks.get(player).take(player, id);
         }
     }
 
-    public static void grant(ServerPlayer player, ResourceLocation id) {
+    public static void grant(ServerPlayer player, Identifier id) {
         ServerHatUnlocks.get(player).add(player, id);
     }
 
     @Nullable
-    public static ResourceLocation hatId(LivingEntity entity) {
+    public static Identifier hatId(LivingEntity entity) {
         return HatManager.getEquippedHatId(entity);
     }
 
-    public static boolean clientHasLaunchable(Player player, @Nullable ResourceLocation id) {
+    public static boolean clientHasLaunchable(Player player, @Nullable Identifier id) {
         if (!useInventory(player)) {
             return id == null || TradeHats.isHat(id);
         }
         if (id == null) {
-            ResourceLocation wearing = TradeHats.equippedId(player);
-            for (ResourceLocation owned : com.astryxion.hats.client.hat.ClientHatUnlocks.all()) {
+            Identifier wearing = TradeHats.equippedId(player);
+            for (Identifier owned : com.astryxion.hats.client.hat.ClientHatUnlocks.all()) {
                 int available = com.astryxion.hats.client.hat.ClientHatUnlocks.count(owned);
                 if (owned.equals(wearing)) {
                     available--;

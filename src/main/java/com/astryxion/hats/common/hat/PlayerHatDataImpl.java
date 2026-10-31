@@ -4,8 +4,7 @@ import com.astryxion.hats.Config;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -13,26 +12,26 @@ import java.util.Set;
 
 public class PlayerHatDataImpl implements PlayerHatData {
 
-    private final Set<ResourceLocation> unlockedHats = new HashSet<>();
-    private ResourceLocation equippedHat = null;
+    private final Set<Identifier> unlockedHats = new HashSet<>();
+    private Identifier equippedHat = null;
     private boolean seenWelcome = false; // 🔧 NEW: Track if they've seen the message
 
     @Override
-    public void unlockHat(ResourceLocation hatId) {
+    public void unlockHat(Identifier hatId) {
         if (Config.hatMode != HatMode.COSMETIC) {
             unlockedHats.add(hatId);
         }
     }
 
     @Override
-    public void grantHat(ResourceLocation hatId) {
+    public void grantHat(Identifier hatId) {
         if (hatId != null) {
             unlockedHats.add(hatId);
         }
     }
 
     @Override
-    public void revokeHat(ResourceLocation hatId) {
+    public void revokeHat(Identifier hatId) {
         if (hatId != null) {
             unlockedHats.remove(hatId);
             if (hatId.equals(equippedHat)) {
@@ -42,7 +41,7 @@ public class PlayerHatDataImpl implements PlayerHatData {
     }
 
     @Override
-    public boolean hasHat(ResourceLocation hatId) {
+    public boolean hasHat(Identifier hatId) {
         if (Config.hatMode == HatMode.COSMETIC) {
             return true;
         }
@@ -50,17 +49,17 @@ public class PlayerHatDataImpl implements PlayerHatData {
     }
 
     @Override
-    public Set<ResourceLocation> getUnlockedHats() {
+    public Set<Identifier> getUnlockedHats() {
         return Collections.unmodifiableSet(unlockedHats);
     }
 
     @Override
-    public ResourceLocation getEquippedHat() {
+    public Identifier getEquippedHat() {
         return equippedHat;
     }
 
     @Override
-    public void setEquippedHat(ResourceLocation hatId) {
+    public void setEquippedHat(Identifier hatId) {
         this.equippedHat = hatId;
     }
 
@@ -95,8 +94,8 @@ public class PlayerHatDataImpl implements PlayerHatData {
         CompoundTag nbt = new CompoundTag();
         ListTag list = new ListTag();
 
-        for (ResourceLocation hatId : unlockedHats) {
-            list.add(StringTag.valueOf(hatId.toString()));
+        for (Identifier hatId : unlockedHats) {
+            list.add(list.size(), StringTag.valueOf(hatId.toString()));
         }
         nbt.put("UnlockedHats", list);
 
@@ -112,20 +111,21 @@ public class PlayerHatDataImpl implements PlayerHatData {
     @Override
     public void deserializeNBT(CompoundTag nbt) {
         unlockedHats.clear();
-        if (nbt.contains("UnlockedHats", Tag.TAG_LIST)) {
-            ListTag list = nbt.getList("UnlockedHats", Tag.TAG_STRING);
-            for (int i = 0; i < list.size(); i++) {
-                unlockedHats.add(new ResourceLocation(list.getString(i)));
+        ListTag list = nbt.getListOrEmpty("UnlockedHats");
+        for (int i = 0; i < list.size(); i++) {
+            String raw = list.getStringOr(i, "");
+            if (!raw.isEmpty()) {
+                unlockedHats.add(Identifier.parse(raw));
             }
         }
 
-        if (nbt.contains("EquippedHat", Tag.TAG_STRING)) {
-            this.equippedHat = new ResourceLocation(nbt.getString("EquippedHat"));
+        String equipped = nbt.getStringOr("EquippedHat", "");
+        if (!equipped.isEmpty()) {
+            this.equippedHat = Identifier.parse(equipped);
         } else {
             this.equippedHat = null;
         }
 
-        // 🔧 Load from disk (defaults to false if tag doesn't exist)
-        this.seenWelcome = nbt.getBoolean("SeenWelcome");
+        this.seenWelcome = nbt.getBooleanOr("SeenWelcome", false);
     }
 }

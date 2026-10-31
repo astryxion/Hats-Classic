@@ -1,5 +1,7 @@
 package com.astryxion.hats.common.trade;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.network.trade.HatTradeNetwork;
 import com.astryxion.hats.common.network.trade.PacketTradeOfferRevoked;
@@ -7,13 +9,13 @@ import com.astryxion.hats.common.network.trade.PacketTradePartnerLeft;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-@Mod.EventBusSubscriber(modid = Hats.MODID)
+@EventBusSubscriber(modid = Hats.MODID)
 public final class TradeEvents {
 
     private static int tradeTickCounter;
@@ -21,10 +23,7 @@ public final class TradeEvents {
     private TradeEvents() {}
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
+    public static void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             return;
@@ -58,13 +57,13 @@ public final class TradeEvents {
 
     @SubscribeEvent
     public static void onPlayerQuit(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player) || player.getServer() == null) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || player.level().getServer() == null) {
             return;
         }
         java.util.UUID uuid = player.getUUID();
         TradeOfferStore.get().closeSession(uuid);
         for (TradeOffer offer : TradeOfferStore.get().removeAllInvolving(uuid)) {
-            ServerPlayer other = player.getServer().getPlayerList().getPlayer(
+            ServerPlayer other = player.level().getServer().getPlayerList().getPlayer(
                     offer.senderUuid.equals(uuid) ? offer.receiverUuid : offer.senderUuid);
             if (other != null) {
                 HatTradeNetwork.send(other, new PacketTradeOfferRevoked(offer.offerId));

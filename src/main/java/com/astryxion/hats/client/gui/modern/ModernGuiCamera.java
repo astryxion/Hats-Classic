@@ -31,7 +31,7 @@ public final class ModernGuiCamera {
     public static void tick() {
         Minecraft minecraft = Minecraft.getInstance();
         hatMenuProgressPrev = hatMenuProgress;
-        boolean open = minecraft.screen instanceof ModernHatsScreen;
+        boolean open = minecraft.gui.screen() instanceof ModernHatsScreen;
 
         if (open) {
             if (savedCameraType == null) {

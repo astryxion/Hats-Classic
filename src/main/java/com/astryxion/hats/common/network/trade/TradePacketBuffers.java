@@ -1,7 +1,7 @@
 package com.astryxion.hats.common.network.trade;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,18 +10,18 @@ final class TradePacketBuffers {
 
     private TradePacketBuffers() {}
 
-    static void writeIds(FriendlyByteBuf buf, List<ResourceLocation> ids) {
+    static void writeIds(FriendlyByteBuf buf, List<Identifier> ids) {
         buf.writeVarInt(ids.size());
-        for (ResourceLocation id : ids) {
-            buf.writeResourceLocation(id);
+        for (Identifier id : ids) {
+            buf.writeIdentifier(id);
         }
     }
 
-    static List<ResourceLocation> readIds(FriendlyByteBuf buf) {
+    static List<Identifier> readIds(FriendlyByteBuf buf) {
         int count = buf.readVarInt();
-        List<ResourceLocation> ids = new ArrayList<>(count);
+        List<Identifier> ids = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            ids.add(buf.readResourceLocation());
+            ids.add(buf.readIdentifier());
         }
         return ids;
     }

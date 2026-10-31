@@ -1,7 +1,7 @@
 package com.astryxion.hats.client.compat;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;

@@ -1,13 +1,11 @@
 package com.astryxion.hats.client.compat;
 
 import com.astryxion.hats.Hats;
-import com.astryxion.hats.mixin.AgeableListModelAccessor;
 import com.astryxion.hats.mixin.ModelPartAccessor;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HeadedModel;
-import net.minecraft.client.model.HierarchicalModel;
 import net.minecraft.client.model.geom.ModelPart;
 
 import org.joml.Matrix3f;
@@ -529,18 +527,22 @@ public final class FreshAnimationsHatCompat {
             starts.add(rootPart);
             starts.addAll(vanillaParts(emfRoot));
         }
-        if (model instanceof HierarchicalModel<?> hierarchical) {
-            starts.add(hierarchical.root());
-        }
+        starts.add(model.root());
         if (model instanceof HeadedModel headed) {
             starts.add(headed.getHead());
         }
-        if (model instanceof AgeableListModelAccessor ageable) {
-            try {
-                ageable.hats$headParts().forEach(starts::add);
-                ageable.hats$bodyParts().forEach(starts::add);
-            } catch (Throwable ignored) {
+        try {
+            if (model instanceof HeadedModel headedParts) {
+                ModelPart head = headedParts.getHead();
+                if (head != null) {
+                    starts.add(head);
+                }
             }
+            ModelPart root = model.root();
+            if (root != null && root.hasChild("body")) {
+                starts.add(root.getChild("body"));
+            }
+        } catch (Throwable ignored) {
         }
         Class<?> search = model.getClass();
         while (search != null && search != Object.class) {

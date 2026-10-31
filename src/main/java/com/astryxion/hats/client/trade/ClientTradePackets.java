@@ -71,8 +71,8 @@ public final class ClientTradePackets {
             net.minecraft.network.chat.Component text = net.minecraft.network.chat.Component
                     .translatable(msg.type().messageKey())
                     .withStyle(net.minecraft.ChatFormatting.RED);
-            minecraft.player.displayClientMessage(text, false);
-            minecraft.player.displayClientMessage(text, true);
+            minecraft.player.sendSystemMessage(text);
+            minecraft.player.sendOverlayMessage(text);
         }
         com.astryxion.hats.client.gui.HatsGui.open();
     }
@@ -84,13 +84,13 @@ public final class ClientTradePackets {
     public static void deliverIfLocalHost(net.minecraft.server.level.ServerPlayer player, Object packet) {
         net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
         java.util.UUID target = player.getUUID();
-        String targetName = player.getGameProfile().getName();
+        String targetName = player.getGameProfile().name();
         minecraft.execute(() -> {
             if (minecraft.player == null) {
                 return;
             }
             if (!minecraft.player.getUUID().equals(target)
-                    && !minecraft.player.getGameProfile().getName().equalsIgnoreCase(targetName)) {
+                    && !minecraft.player.getGameProfile().name().equalsIgnoreCase(targetName)) {
                 return;
             }
             if (packet instanceof PacketIncomingTradeOffer incoming) {

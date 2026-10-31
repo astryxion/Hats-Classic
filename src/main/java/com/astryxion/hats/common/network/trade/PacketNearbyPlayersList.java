@@ -1,16 +1,24 @@
 package com.astryxion.hats.common.network.trade;
 
-import com.astryxion.hats.common.network.HatPacketHandler;
-
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketNearbyPlayersList {
+public class PacketNearbyPlayersList implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketNearbyPlayersList> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "nearby_players_list"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketNearbyPlayersList> STREAM_CODEC =
+            StreamCodec.of(PacketNearbyPlayersList::encode, PacketNearbyPlayersList::decode);
 
     public record Entry(UUID uuid, String name) {}
 
@@ -24,7 +32,12 @@ public class PacketNearbyPlayersList {
         return players;
     }
 
-    public static void encode(PacketNearbyPlayersList msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketNearbyPlayersList msg) {
         buf.writeVarInt(msg.players.size());
         for (Entry entry : msg.players) {
             buf.writeUUID(entry.uuid());
@@ -32,7 +45,7 @@ public class PacketNearbyPlayersList {
         }
     }
 
-    public static PacketNearbyPlayersList decode(FriendlyByteBuf buf) {
+    public static PacketNearbyPlayersList decode(RegistryFriendlyByteBuf buf) {
         int count = buf.readVarInt();
         List<Entry> players = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -41,12 +54,11 @@ public class PacketNearbyPlayersList {
         return new PacketNearbyPlayersList(players);
     }
 
-    public static void handle(PacketNearbyPlayersList msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
-                "com.astryxion.hats.client.trade.ClientTradePackets",
-                "onNearbyPlayers",
-                new Class<?>[]{PacketNearbyPlayersList.class},
-                new Object[]{msg}));
-        ctx.get().setPacketHandled(true);
+    public static void handle(PacketNearbyPlayersList msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (FMLEnvironment.getDist() == Dist.CLIENT) {
+                com.astryxion.hats.client.trade.ClientTradePackets.onNearbyPlayers(msg);
+            }
+        });
     }
 }

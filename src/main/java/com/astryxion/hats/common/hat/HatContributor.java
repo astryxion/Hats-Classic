@@ -1,13 +1,14 @@
 package com.astryxion.hats.common.hat;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.common.tabula.TabulaHatDefinition;
 import com.astryxion.hats.common.tabula.TabulaHats;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 
-import net.minecraftforge.registries.ForgeRegistries;
 
 /**
  * Detects (C) contributor hats via Tabula path or lang key.
@@ -22,11 +23,11 @@ public final class HatContributor {
         if (item == null) {
             return false;
         }
-        ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+        Identifier id = BuiltInRegistries.ITEM.getKey(item);
         return isContributor(item, id);
     }
 
-    public static boolean isContributor(Item item, ResourceLocation hatId) {
+    public static boolean isContributor(Item item, Identifier hatId) {
         if (item instanceof HatItem hatItem && hatItem.isTabula()) {
             TabulaHatDefinition def = TabulaHats.get(hatItem.getHatId());
             if (def != null && def.relativePath.replace('\\', '/').toLowerCase().startsWith("contributors/")) {

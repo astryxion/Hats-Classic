@@ -9,7 +9,7 @@ import com.astryxion.hats.common.hat.HatMode;
 import com.astryxion.hats.common.hatstand.HatStandGuiStyle;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
@@ -45,7 +45,7 @@ public class HatConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        list = new ConfigList(minecraft, width, height, 48, height - 32, 25);
+        list = new ConfigList(minecraft, width, height - 80, 48, 25);
         fillList();
         addWidget(list);
 
@@ -169,13 +169,13 @@ public class HatConfigScreen extends Screen {
         list.addSmall(
                 HatsButton.create(width / 2 - 155, 0, 150, 20, Component.translatable("hats.config.mobs.allOn"), button -> {
                     Config.setAllMobHats(true);
-                    double scroll = list.getScrollAmount();
+                    double scroll = list.scrollAmount();
                     fillList();
                     list.setScrollAmount(scroll);
                 }),
                 HatsButton.create(width / 2 - 155 + 160, 0, 150, 20, Component.translatable("hats.config.mobs.allOff"), button -> {
                     Config.setAllMobHats(false);
-                    double scroll = list.getScrollAmount();
+                    double scroll = list.scrollAmount();
                     fillList();
                     list.setScrollAmount(scroll);
                 })
@@ -208,11 +208,10 @@ public class HatConfigScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx);
-        list.render(gfx, mouseX, mouseY, partialTick);
-        gfx.drawCenteredString(font, title, width / 2, 8, 0xFFFFFF);
-        super.render(gfx, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        list.extractRenderState(gfx, mouseX, mouseY, partialTick);
+        gfx.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
+        super.extractRenderState(gfx, mouseX, mouseY, partialTick);
     }
 
     @Override
@@ -221,17 +220,17 @@ public class HatConfigScreen extends Screen {
         int standId = parent instanceof HatScreen legacy ? legacy.standEntityId()
                 : parent instanceof ModernHatsScreen modern ? modern.standEntityId() : -1;
         if (standId >= 0 && Config.hatStandGuiStyle != originalHatStandGuiStyle) {
-            minecraft.setScreen(HatStandGui.create(standId));
+            minecraft.gui.setScreen(HatStandGui.create(standId));
         } else if (standId < 0 && HatsGui.isHatMenu(parent) && Config.guiStyle != originalGuiStyle) {
-            minecraft.setScreen(HatsGui.create());
+            minecraft.gui.setScreen(HatsGui.create());
         } else {
-            minecraft.setScreen(parent);
+            minecraft.gui.setScreen(parent);
         }
     }
 
     private static class ConfigList extends ContainerObjectSelectionList<ConfigList.Entry> {
-        ConfigList(Minecraft minecraft, int width, int height, int y0, int y1, int itemHeight) {
-            super(minecraft, width, height, y0, y1, itemHeight);
+        ConfigList(Minecraft minecraft, int width, int height, int y, int itemHeight) {
+            super(minecraft, width, height, y, itemHeight);
             centerListVertically = false;
         }
 
@@ -254,8 +253,8 @@ public class HatConfigScreen extends Screen {
         }
 
         @Override
-        protected int getScrollbarPosition() {
-            return super.getScrollbarPosition() + 32;
+        protected int scrollBarX() {
+            return super.scrollBarX() + 32;
         }
 
         private static class Entry extends ContainerObjectSelectionList.Entry<Entry> {
@@ -274,10 +273,10 @@ public class HatConfigScreen extends Screen {
             }
 
             @Override
-            public void render(GuiGraphics gfx, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovering, float partialTick) {
+            public void extractContent(GuiGraphicsExtractor gfx, int mouseX, int mouseY, boolean hovered, float partialTick) {
                 for (AbstractWidget widget : children) {
-                    widget.setY(top);
-                    widget.render(gfx, mouseX, mouseY, partialTick);
+                    widget.setY(getY());
+                    widget.extractRenderState(gfx, mouseX, mouseY, partialTick);
                 }
             }
 

@@ -1,43 +1,30 @@
 package com.astryxion.hats.common.hat;
 
 import com.astryxion.hats.Hats;
+import com.mojang.serialization.MapCodec;
 
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ICapabilitySerializable;
-import net.minecraftforge.common.util.LazyOptional;
+public class HatPartProvider implements IAttachmentSerializer<HatPart> {
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-public class HatPartProvider implements ICapabilitySerializable<CompoundTag> {
-
-    public static final ResourceLocation ID =
-            new ResourceLocation(Hats.MODID, "hat_part");
-
-    private final HatPart hatPart = new HatPart();
-    private final LazyOptional<HatPart> optional = LazyOptional.of(() -> hatPart);
+    public static final Identifier ID =
+            Identifier.fromNamespaceAndPath(Hats.MODID, "hat_part");
 
     @Override
-    public <T> @NotNull LazyOptional<T> getCapability(
-            @NotNull Capability<T> cap,
-            @Nullable Direction side
-    ) {
-        return cap == HatPartCapability.HAT_PART
-                ? optional.cast()
-                : LazyOptional.empty();
+    public HatPart read(IAttachmentHolder holder, ValueInput input) {
+        HatPart hatPart = new HatPart();
+        input.read(MapCodec.assumeMapUnsafe(CompoundTag.CODEC)).ifPresent(hatPart::deserializeNBT);
+        return hatPart;
     }
 
     @Override
-    public CompoundTag serializeNBT() {
-        return hatPart.serializeNBT();
-    }
-
-    @Override
-    public void deserializeNBT(CompoundTag nbt) {
-        hatPart.deserializeNBT(nbt);
+    public boolean write(HatPart hatPart, ValueOutput output) {
+        output.store(hatPart.serializeNBT());
+        return true;
     }
 }

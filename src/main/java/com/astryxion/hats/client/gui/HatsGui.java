@@ -1,5 +1,7 @@
 package com.astryxion.hats.client.gui;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.Config;
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.client.hat.ClientHatUnlocks;
@@ -13,11 +15,10 @@ import com.astryxion.hats.common.network.PacketOpenHuntingMenu;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +38,9 @@ public final class HatsGui {
             return;
         }
         if (Config.hatMode == HatMode.COSMETIC) {
-            HatPacketHandler.CHANNEL.sendToServer(new PacketOpenCosmeticMenu());
+            HatPacketHandler.sendToServer(new PacketOpenCosmeticMenu());
         } else {
-            HatPacketHandler.CHANNEL.sendToServer(new PacketOpenHuntingMenu());
+            HatPacketHandler.sendToServer(new PacketOpenHuntingMenu());
         }
     }
 
@@ -48,13 +49,13 @@ public final class HatsGui {
         if (minecraft.player == null) {
             return;
         }
-        minecraft.setScreen(create());
+        minecraft.gui.setScreen(create());
     }
 
     /** Rebuild the hat menu after inventory sync so a just-accepted trade is visible. */
     public static void refreshIfOpen() {
         Minecraft minecraft = Minecraft.getInstance();
-        if (isHatMenu(minecraft.screen)) {
+        if (isHatMenu(minecraft.gui.screen())) {
             open();
         }
     }
@@ -65,10 +66,10 @@ public final class HatsGui {
 
     public static LivingEntity getPreviewEntity() {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen instanceof HatScreen legacy) {
+        if (minecraft.gui.screen() instanceof HatScreen legacy) {
             return legacy.previewTarget();
         }
-        if (minecraft.screen instanceof ModernHatsScreen modern) {
+        if (minecraft.gui.screen() instanceof ModernHatsScreen modern) {
             return modern.previewTarget();
         }
         return null;
@@ -81,11 +82,11 @@ public final class HatsGui {
         }
 
         boolean showAll = player.isCreative() || Config.hatMode == HatMode.COSMETIC;
-        for (Item item : ForgeRegistries.ITEMS.getValues()) {
+        for (Item item : BuiltInRegistries.ITEM.stream().toList()) {
             if (!(item instanceof HatItem)) {
                 continue;
             }
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+            Identifier id = BuiltInRegistries.ITEM.getKey(item);
             if (id == null || !id.getNamespace().equals(Hats.MODID)) {
                 continue;
             }
@@ -94,9 +95,7 @@ public final class HatsGui {
             }
             boolean owned = ClientHatUnlocks.hasOverride()
                     ? ClientHatUnlocks.has(id)
-                    : player.getCapability(HatDataCapability.HAT_DATA)
-                            .map(data -> data.hasHat(id))
-                            .orElse(false);
+                    : player.getData(HatDataCapability.HAT_DATA).hasHat(id);
             if (showAll || owned) {
                 hats.add(item);
             }

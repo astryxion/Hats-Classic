@@ -1,5 +1,7 @@
 package com.astryxion.hats.client.gui.modern;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.client.gui.HatPreviewRenderer;
 import com.astryxion.hats.client.hat.ClientHatUnlocks;
 import com.astryxion.hats.client.gui.widget.HatsIcons;
@@ -9,12 +11,13 @@ import com.astryxion.hats.common.hat.HatItem;
 import com.astryxion.hats.common.hat.HatRarity;
 import com.astryxion.hats.common.tabula.TabulaHatDefinition;
 import com.astryxion.hats.common.tabula.TabulaHats;
-import com.mojang.math.Axis;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
@@ -22,7 +25,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
@@ -145,14 +147,14 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
     private void applyFilter() {
         filtered.clear();
         for (Item hat : allHats) {
-            String name = hat.getDescription().getString().toLowerCase(Locale.ROOT);
+            String name = Component.translatable(hat.getDescriptionId()).getString().toLowerCase(Locale.ROOT);
             if (currentFilter.isEmpty() || name.contains(currentFilter)) {
                 filtered.add(hat);
             }
         }
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         if (!visible) {
             return;
         }
@@ -180,7 +182,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         }
 
         if (filtered.isEmpty()) {
-            gfx.drawString(font, Component.translatable("hats.gui.no_hats").getString(), x + 4, y + 4, 0x888888);
+            gfx.text(font, Component.translatable("hats.gui.no_hats").getString(), x + 4, y + 4, 0xFF888888);
         } else {
             gfx.enableScissor(x + 1, y + 1, x + gridW() - 1, y + height - 1);
             Player player = minecraft.player;
@@ -207,20 +209,20 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
             Item hat = filtered.get(hoveredIdx);
             HatRarity rarity = rarity(hat);
             List<Component> lines = new ArrayList<>();
-            Component name = hat.getDescription().copy()
+            Component name = Component.translatable(hat.getDescriptionId()).copy()
                     .withStyle(style -> style.withColor(rarity.getColor()));
             lines.add(name);
             String rarityLabel = rarity.name().charAt(0) + rarity.name().substring(1).toLowerCase(Locale.ROOT);
             lines.add(Component.literal(rarityLabel).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC));
-            int copies = ClientHatUnlocks.count(ForgeRegistries.ITEMS.getKey(hat));
+            int copies = ClientHatUnlocks.count(BuiltInRegistries.ITEM.getKey(hat));
             if (copies > 1) {
                 lines.add(Component.literal("x" + copies).withStyle(ChatFormatting.GRAY));
             }
-            gfx.renderTooltip(font, lines.stream().map(Component::getVisualOrderText).toList(), mouseX, mouseY);
+            gfx.setTooltipForNextFrame(font, lines.stream().map(Component::getVisualOrderText).toList(), mouseX, mouseY);
         }
     }
 
-    private void renderCell(GuiGraphics gfx, Item hat, int index, int cellX, int cellY, int mouseX, int mouseY, @Nullable Player player) {
+    private void renderCell(GuiGraphicsExtractor gfx, Item hat, int index, int cellX, int cellY, int mouseX, int mouseY, @Nullable Player player) {
         boolean selectedCell = selected == hat;
         boolean hovered = !scrollDragging && hoveredIdx == index;
         boolean menuOpen = menuOpenIdx == index;
@@ -232,7 +234,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         HatsWidgets.renderMinecraftStyleButton(gfx, cellX, cellY, CELL_W, CELL_H, state);
 
         if (favourite) {
-            gfx.blit(HatsIcons.FAVOURITE, cellX + CELL_W - STRIP_W - 9, cellY + 2, 7, 7, 0, 0, 16, 16, 16, 16);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, HatsIcons.FAVOURITE, cellX + CELL_W - STRIP_W - 9, cellY + 2, 0.0F, 0.0F, 7, 7, 16, 16, 16, 16);
         }
         if (player != null) {
             renderPlayerInCell(gfx, hat, cellX, cellY, player);
@@ -248,18 +250,18 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         }
     }
 
-    private void renderHamburger(GuiGraphics gfx, int cellX, int cellY, boolean active, int mouseX, int mouseY) {
+    private void renderHamburger(GuiGraphicsExtractor gfx, int cellX, int cellY, boolean active, int mouseX, int mouseY) {
         int buttonX = cellX + 1;
         int buttonY = cellY + 1;
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + BTN_SZ && mouseY >= buttonY && mouseY < buttonY + BTN_SZ;
         int background = active ? 0xCC1A4A8A : (hovered ? 0xCCAAAACC : 0xCC333355);
-        gfx.fill(buttonX, buttonY, buttonX + BTN_SZ, buttonY + BTN_SZ, MENU_Z, background);
+        gfx.fill(buttonX, buttonY, buttonX + BTN_SZ, buttonY + BTN_SZ, background);
         for (int line = 0; line < 3; line++) {
-            gfx.fill(buttonX + 2, buttonY + 3 + line * 3, buttonX + BTN_SZ - 2, buttonY + 4 + line * 3, MENU_Z + 1, 0xFFDDDDDD);
+            gfx.fill(buttonX + 2, buttonY + 3 + line * 3, buttonX + BTN_SZ - 2, buttonY + 4 + line * 3, 0xFFDDDDDD);
         }
     }
 
-    private void renderMenuOptions(GuiGraphics gfx, Item hat, int cellX, int cellY, int mouseX, int mouseY) {
+    private void renderMenuOptions(GuiGraphicsExtractor gfx, Item hat, int cellX, int cellY, int mouseX, int mouseY) {
         boolean favourite = ClientFavourites.isFavourite(hatId(hat));
         int buttonX = cellX + 1;
         int optionY = cellY + 1 + BTN_SZ + BTN_GAP;
@@ -271,44 +273,44 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
                 favourite ? 0xFF885500 : 0xFF555555, mouseX, mouseY);
     }
 
-    private void renderOptionButton(GuiGraphics gfx, int buttonX, int buttonY, String label, int iconColor, int mouseX, int mouseY) {
+    private void renderOptionButton(GuiGraphicsExtractor gfx, int buttonX, int buttonY, String label, int iconColor, int mouseX, int mouseY) {
         boolean hovered = mouseX >= buttonX && mouseX < buttonX + BTN_SZ && mouseY >= buttonY && mouseY < buttonY + BTN_SZ;
-        gfx.fill(buttonX, buttonY, buttonX + BTN_SZ, buttonY + BTN_SZ, MENU_Z, iconColor | 0xBB000000);
-        gfx.fill(buttonX + 1, buttonY + 1, buttonX + BTN_SZ - 1, buttonY + BTN_SZ - 1, MENU_Z + 1, hovered ? 0xCCBBBBDD : 0xCC222244);
-        gfx.pose().pushPose();
-        gfx.pose().translate(buttonX + BTN_SZ / 2f, buttonY + BTN_SZ / 2f, MENU_Z + 2);
-        gfx.pose().scale(0.7f, 0.7f, 1);
+        gfx.fill(buttonX, buttonY, buttonX + BTN_SZ, buttonY + BTN_SZ, iconColor | 0xBB000000);
+        gfx.fill(buttonX + 1, buttonY + 1, buttonX + BTN_SZ - 1, buttonY + BTN_SZ - 1, hovered ? 0xCCBBBBDD : 0xCC222244);
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(buttonX + BTN_SZ / 2f, buttonY + BTN_SZ / 2f);
+        gfx.pose().scale(0.7f, 0.7f);
         int textWidth = font.width(label);
-        gfx.drawString(font, label, -textWidth / 2, -font.lineHeight / 2, 0xFFFFFF, true);
-        gfx.pose().popPose();
+        gfx.text(font, label, -textWidth / 2, -font.lineHeight / 2, 0xFFFFFFFF, true);
+        gfx.pose().popMatrix();
     }
 
-    private void renderPlayerInCell(GuiGraphics gfx, Item hat, int cellX, int cellY, Player player) {
+    private void renderPlayerInCell(GuiGraphicsExtractor gfx, Item hat, int cellX, int cellY, Player player) {
         int contentW = CELL_W - STRIP_W;
         HatPreviewRenderer.render(gfx, player, new ItemStack(hat),
                 cellX + contentW / 2 + 1, cellY + CELL_H + 54, 42,
                 cellX + 1, cellY + 1, cellX + contentW - 1, cellY + CELL_H - 1);
     }
 
-    private static void renderCount(GuiGraphics gfx, Item hat, int x, int y) {
-        int copies = ClientHatUnlocks.count(ForgeRegistries.ITEMS.getKey(hat));
+    private static void renderCount(GuiGraphicsExtractor gfx, Item hat, int x, int y) {
+        int copies = ClientHatUnlocks.count(BuiltInRegistries.ITEM.getKey(hat));
         if (copies <= 1) {
             return;
         }
         Font font = Minecraft.getInstance().font;
         float scale = 0.6F;
-        gfx.pose().pushPose();
-        gfx.pose().translate(x, y - font.lineHeight * scale, 375.0F);
-        gfx.pose().scale(scale, scale, 1.0F);
-        gfx.drawString(font, "x" + copies, 0, 0, 0xFFFFFFFF, true);
-        gfx.pose().popPose();
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(x, y - font.lineHeight * scale);
+        gfx.pose().scale(scale, scale);
+        gfx.text(font, "x" + copies, 0, 0, 0xFFFFFFFF, true);
+        gfx.pose().popMatrix();
     }
 
-    private void renderVerticalName(GuiGraphics gfx, Item hat, int cellX, int cellY) {
-        String name = hat.getDescription().getString();
+    private void renderVerticalName(GuiGraphicsExtractor gfx, Item hat, int cellX, int cellY) {
+        String name = Component.translatable(hat.getDescriptionId()).getString();
         int stripX = cellX + CELL_W - STRIP_W;
         gfx.fill(stripX, cellY + 1, cellX + CELL_W - 1, cellY + CELL_H - 1, 0x99000000);
-        int color = rarity(hat).getColor();
+        int color = rarity(hat).getColor() | 0xFF000000;
 
         float scale = 0.6f;
         int available = (int) ((CELL_H - 6) / scale);
@@ -316,16 +318,16 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         int yOff = -(int) (STRIP_W / scale / 2f + font.lineHeight / 2f - 1);
 
         gfx.enableScissor(stripX + 1, cellY + 2, cellX + CELL_W - 1, cellY + CELL_H - 2);
-        gfx.pose().pushPose();
-        gfx.pose().translate(cellX + CELL_W - 2, cellY + CELL_H - 3, 200);
-        gfx.pose().mulPose(Axis.ZP.rotationDegrees(-90f));
-        gfx.pose().scale(scale, scale, 1f);
-        gfx.drawString(font, name, (int) (2 - scrollOffset(textWidth, available)), yOff, color, true);
-        gfx.pose().popPose();
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(cellX + CELL_W - 2, cellY + CELL_H - 3);
+        gfx.pose().rotate((float) Math.toRadians(-90f));
+        gfx.pose().scale(scale, scale);
+        gfx.text(font, name, (int) (2 - scrollOffset(textWidth, available)), yOff, color, true);
+        gfx.pose().popMatrix();
         gfx.disableScissor();
     }
 
-    private void renderAccessoryView(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void renderAccessoryView(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         if (accessoryViewStack == null || accessoryViewStack.isEmpty()) {
             return;
         }
@@ -343,19 +345,19 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
             renderPlayerInCard(gfx, accessoryViewStack, x, y, mainW, mainContentH, minecraft.player);
         }
         renderVerticalNameInArea(gfx, accessoryViewStack.getHoverName().getString(),
-                rarity(accessoryViewStack.getItem()).getColor(), x, y, mainW, mainContentH);
+                rarity(accessoryViewStack.getItem()).getColor() | 0xFF000000, x, y, mainW, mainContentH);
 
         int backY = y + height - backBtnH;
         boolean backHovered = mouseX >= x + 1 && mouseX < x + mainW - 1
                 && mouseY >= backY + 1 && mouseY < backY + backBtnH - 1;
         gfx.fill(x + 1, backY + 1, x + mainW - 1, backY + backBtnH - 1, backHovered ? 0xFFAAAAAA : 0xFF777777);
         gfx.fill(x + 1, backY, x + mainW - 1, backY + 1, 0xFF555555);
-        gfx.drawString(font, Component.translatable("hats.gui.back"), x + 4, backY + 4, 0xFFFFFF, false);
+        gfx.text(font, Component.translatable("hats.gui.back"), x + 4, backY + 4, 0xFFFFFFFF, false);
 
         int accX = x + mainW + 1;
         int accW = totalW - mainW - 1 - SCROLL_W;
         if (accessories.isEmpty()) {
-            gfx.drawString(font, Component.translatable("hats.gui.noAccessories"), accX + 4, y + 4, 0x888888, false);
+            gfx.text(font, Component.translatable("hats.gui.noAccessories"), accX + 4, y + 4, 0xFF888888, false);
             return;
         }
 
@@ -387,7 +389,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
             if (player != null) {
                 renderPlayerInCard(gfx, accessoryPreview(parent, accessory), accX, accY, accW, accH, player);
             }
-            renderVerticalNameInArea(gfx, accessory.displayName, accessory.rarity.getColor(), accX, accY, accW, accH);
+            renderVerticalNameInArea(gfx, accessory.displayName, accessory.rarity.getColor() | 0xFF000000, accX, accY, accW, accH);
         }
         gfx.disableScissor();
 
@@ -411,7 +413,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         return preview;
     }
 
-    private void renderBigCard(GuiGraphics gfx, int cellX, int cellY, int cellW, int cellH, boolean selected, boolean hovered) {
+    private void renderBigCard(GuiGraphicsExtractor gfx, int cellX, int cellY, int cellW, int cellH, boolean selected, boolean hovered) {
         int background = selected ? 0xFF1A3A6A : (hovered ? 0xFF505060 : 0xFF404040);
         gfx.fill(cellX, cellY, cellX + cellW, cellY + cellH, background);
         gfx.fill(cellX, cellY, cellX + cellW, cellY + 1, 0xFF666666);
@@ -420,7 +422,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         gfx.fill(cellX + cellW - 1, cellY, cellX + cellW, cellY + cellH, 0xFF222222);
     }
 
-    private void renderPlayerInCard(GuiGraphics gfx, ItemStack hat, int cellX, int cellY, int cellW, int cellH, Player player) {
+    private void renderPlayerInCard(GuiGraphicsExtractor gfx, ItemStack hat, int cellX, int cellY, int cellW, int cellH, Player player) {
         int previewBottom = cellY + cellH - 1;
         int previewH = Math.max(1, cellH - 2);
         int scale = Math.max(32, Math.round(previewH / 1.2f));
@@ -431,7 +433,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
                 cellX + 1, cellY + 1, cellX + cellW - STRIP_W - 1, previewBottom);
     }
 
-    private void renderVerticalNameInArea(GuiGraphics gfx, String name, int color, int cellX, int cellY, int cellW, int cellH) {
+    private void renderVerticalNameInArea(GuiGraphicsExtractor gfx, String name, int color, int cellX, int cellY, int cellW, int cellH) {
         int stripX = cellX + cellW - STRIP_W;
         gfx.fill(stripX, cellY + 1, cellX + cellW - 1, cellY + cellH - 1, 0x99000000);
         float scale = 0.6f;
@@ -439,12 +441,12 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         int textWidth = font.width(name);
         int yOff = -(int) (STRIP_W / scale / 2f + font.lineHeight / 2f - 1);
         gfx.enableScissor(stripX + 1, cellY + 2, cellX + cellW - 1, cellY + cellH - 2);
-        gfx.pose().pushPose();
-        gfx.pose().translate(cellX + cellW - 2, cellY + cellH - 3, 200);
-        gfx.pose().mulPose(Axis.ZP.rotationDegrees(-90f));
-        gfx.pose().scale(scale, scale, 1f);
-        gfx.drawString(font, name, (int) (2 - scrollOffset(textWidth, available)), yOff, color, true);
-        gfx.pose().popPose();
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(cellX + cellW - 2, cellY + cellH - 3);
+        gfx.pose().rotate((float) Math.toRadians(-90f));
+        gfx.pose().scale(scale, scale);
+        gfx.text(font, name, (int) (2 - scrollOffset(textWidth, available)), yOff, color, true);
+        gfx.pose().popMatrix();
         gfx.disableScissor();
     }
 
@@ -473,7 +475,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
         return (1f - (time - 2 * pauseMs - scrollMs) / scrollMs) * overflow;
     }
 
-    private void renderScrollbar(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void renderScrollbar(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         int barX = x + gridW();
         gfx.fill(barX, y, barX + SCROLL_W, y + height, 0xFF2A2A2A);
         gfx.fill(barX + 1, y + 1, barX + SCROLL_W - 1, y + height - 1, 0xFF333333);
@@ -507,7 +509,10 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (!visible || !isMouseOver(mouseX, mouseY)) {
             return false;
         }
@@ -627,7 +632,8 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        int button = event.button();
         if (button == 0) {
             scrollDragging = false;
         }
@@ -635,7 +641,9 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        double mouseY = event.y();
+        int button = event.button();
         if (!visible || button != 0 || !scrollDragging) {
             return false;
         }
@@ -650,7 +658,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (!visible || !isMouseOver(mouseX, mouseY)) {
             return false;
         }
@@ -658,10 +666,10 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
             List<TabulaHatDefinition> accessories = accessoryViewAccessories();
             int accH = Math.max(CELL_H, height / Math.max(1, accessories.size()));
             int maxAccScroll = Math.max(0, accessories.size() * accH - height);
-            accScrollOffset = (int) Math.max(0, Math.min(maxAccScroll, accScrollOffset - delta * 12));
+            accScrollOffset = (int) Math.max(0, Math.min(maxAccScroll, accScrollOffset - scrollY * 12));
             return true;
         }
-        scrollOffset = (int) Math.max(0, Math.min(maxScroll(), scrollOffset - delta * 12));
+        scrollOffset = (int) Math.max(0, Math.min(maxScroll(), scrollOffset - scrollY * 12));
         return true;
     }
 
@@ -695,7 +703,7 @@ public class ModernHatGridWidget implements GuiEventListener, NarratableEntry {
     }
 
     public static String hatId(Item hat) {
-        var id = ForgeRegistries.ITEMS.getKey(hat);
-        return id != null ? id.toString() : hat.getDescription().getString();
+        var id = BuiltInRegistries.ITEM.getKey(hat);
+        return id != null ? id.toString() : Component.translatable(hat.getDescriptionId()).getString();
     }
 }

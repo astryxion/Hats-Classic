@@ -1,0 +1,21 @@
+{
+  "display": {
+    "icon": {
+      "id": "hats:adv_icon_hat"
+    },
+    "title": {
+      "text": "Hats"
+    },
+    "description": {
+      "text": "The quest for the perfect fit begins here."
+    },
+    "background": "minecraft:block/basalt_side",
+    "show_toast": false,
+    "announce_to_chat": false
+  },
+  "criteria": {
+    "auto_unlock": {
+      "trigger": "minecraft:tick"
+    }
+  }
+}

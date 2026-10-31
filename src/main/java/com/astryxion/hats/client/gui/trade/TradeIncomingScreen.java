@@ -10,11 +10,11 @@ import com.astryxion.hats.common.trade.TradeOffer;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 
@@ -57,7 +57,7 @@ public class TradeIncomingScreen extends Screen {
     }
 
     private void respond(boolean accept) {
-        HatPacketHandler.CHANNEL.sendToServer(new PacketRespondTradeOffer(offer.offerId, accept));
+        HatPacketHandler.sendToServer(new PacketRespondTradeOffer(offer.offerId, accept));
         ClientTradeState.removeIncomingOffer(offer.offerId);
         if (accept) {
             net.minecraft.client.Minecraft minecraft = Minecraft.getInstance();
@@ -68,20 +68,19 @@ public class TradeIncomingScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(panelX - 1, panelY - 1, panelX + PANEL_W + 1, panelY + PANEL_H + 1, 0xFF555555);
         graphics.fill(panelX, panelY, panelX + PANEL_W, panelY + PANEL_H, 0xFFC6C6C6);
         graphics.fill(panelX + 1, panelY + 1, panelX + PANEL_W - 1, panelY + 2, 0xFFFFFFFF);
 
         Component header = Component.translatable("hats.trade.offerFrom", offer.senderName)
                 .withStyle(ChatFormatting.DARK_GRAY);
-        graphics.drawString(font, header, panelX + (PANEL_W - font.width(header)) / 2, panelY + 6, 0xFF222222, false);
+        graphics.text(font, header, panelX + (PANEL_W - font.width(header)) / 2, panelY + 6, 0xFF222222, false);
 
         long remaining = Math.max(0L, TradeOffer.EXPIRY_MS - (System.currentTimeMillis() - offer.createdAtClientMs));
         long seconds = remaining / 1000L;
         String expires = Component.translatable("hats.trade.expires", seconds / 60, String.format("%02d", seconds % 60)).getString();
-        graphics.drawString(font, expires, panelX + (PANEL_W - font.width(expires)) / 2, panelY + 18, 0xFF555555, false);
+        graphics.text(font, expires, panelX + (PANEL_W - font.width(expires)) / 2, panelY + 18, 0xFF555555, false);
 
         int colW = (PANEL_W - 18) / 2;
         Player player = Minecraft.getInstance().player;
@@ -92,32 +91,32 @@ public class TradeIncomingScreen extends Screen {
 
         if (offer.receiverHats.isEmpty()) {
             String note = Component.translatable("hats.trade.giftNote").getString();
-            graphics.drawString(font, note, panelX + (PANEL_W - font.width(note)) / 2, panelY + PANEL_H - 36, 0xFF227722, false);
+            graphics.text(font, note, panelX + (PANEL_W - font.width(note)) / 2, panelY + PANEL_H - 36, 0xFF227722, false);
         } else if (offer.senderHats.isEmpty()) {
             String note = Component.translatable("hats.trade.wantGiftNote").getString();
-            graphics.drawString(font, note, panelX + (PANEL_W - font.width(note)) / 2, panelY + PANEL_H - 36, 0xFF884400, false);
+            graphics.text(font, note, panelX + (PANEL_W - font.width(note)) / 2, panelY + PANEL_H - 36, 0xFF884400, false);
         }
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 
     private void renderColumn(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             int columnX,
             int columnY,
             int columnW,
             String header,
-            List<ResourceLocation> hats,
+            List<Identifier> hats,
             int scroll,
             Player player
     ) {
-        graphics.drawString(font, header, columnX, columnY, 0xFF222222, false);
+        graphics.text(font, header, columnX, columnY, 0xFF222222, false);
         int rowsY = columnY + 11;
         int rowsH = colH - 11;
         graphics.fill(columnX - 1, rowsY - 1, columnX + columnW + 1, rowsY + rowsH + 1, 0xFF555555);
         graphics.fill(columnX, rowsY, columnX + columnW, rowsY + rowsH, 0xFF2B2B2B);
         if (hats.isEmpty()) {
             String empty = Component.translatable("hats.trade.nothing").getString();
-            graphics.drawString(font, empty, columnX + (columnW - font.width(empty)) / 2, rowsY + rowsH / 2 - 4, 0xFF777777, false);
+            graphics.text(font, empty, columnX + (columnW - font.width(empty)) / 2, rowsY + rowsH / 2 - 4, 0xFF777777, false);
             return;
         }
         int cellsPerRow = Math.max(1, (columnW - 6) / CELL_W);
@@ -136,7 +135,7 @@ public class TradeIncomingScreen extends Screen {
         graphics.disableScissor();
     }
 
-    private void renderHatCell(GuiGraphics graphics, ResourceLocation id, int cellX, int cellY, Player player) {
+    private void renderHatCell(GuiGraphicsExtractor graphics, Identifier id, int cellX, int cellY, Player player) {
         graphics.fill(cellX, cellY, cellX + CELL_W, cellY + CELL_H, 0xFF404040);
         graphics.fill(cellX, cellY, cellX + CELL_W, cellY + 1, 0xFF555555);
         graphics.fill(cellX, cellY, cellX + 1, cellY + CELL_H, 0xFF555555);
@@ -146,12 +145,12 @@ public class TradeIncomingScreen extends Screen {
         if (item != null && player != null) {
             TradeHatPreview.render(graphics, player, item, cellX, cellY, CELL_W, CELL_H);
         }
-        String name = item == null ? id.getPath() : item.getDescription().getString();
+        String name = item == null ? id.getPath() : Component.translatable(item.getDescriptionId()).getString();
         HatNameScroller.draw(graphics, font, name, cellX, cellY + CELL_H + 1, CELL_W, 0xFFDDDDDD);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int colW = (PANEL_W - 18) / 2;
         int leftX = panelX + 6;
         int rightX = panelX + 12 + colW;
@@ -159,15 +158,15 @@ public class TradeIncomingScreen extends Screen {
         int rowsH = colH - 11;
         if (mouseY >= rowsY && mouseY < rowsY + rowsH) {
             if (mouseX >= leftX && mouseX < leftX + colW) {
-                leftScroll = clampScroll(leftScroll - (int) (delta * 12), offer.senderHats.size(), colW, rowsH);
+                leftScroll = clampScroll(leftScroll - (int) (scrollY * 12), offer.senderHats.size(), colW, rowsH);
                 return true;
             }
             if (mouseX >= rightX && mouseX < rightX + colW) {
-                rightScroll = clampScroll(rightScroll - (int) (delta * 12), offer.receiverHats.size(), colW, rowsH);
+                rightScroll = clampScroll(rightScroll - (int) (scrollY * 12), offer.receiverHats.size(), colW, rowsH);
                 return true;
             }
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     private int clampScroll(int proposed, int hatCount, int columnW, int rowsH) {

@@ -1,5 +1,7 @@
 package com.astryxion.hats.client.gui;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.Config;
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.client.gui.modern.ClientFavourites;
@@ -23,23 +25,24 @@ import com.astryxion.hats.common.hat.HatRarity;
 import com.astryxion.hats.common.tabula.TabulaHatDefinition;
 import com.astryxion.hats.common.tabula.TabulaHats;
 
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.util.Mth;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
-
-import org.joml.Quaternionf;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -53,8 +56,8 @@ import java.util.Random;
  */
 public class HatScreen extends Screen {
 
-    private static final ResourceLocation CHOOSER =
-            new ResourceLocation(Hats.MODID, "textures/gui/hatchooser.png");
+    private static final Identifier CHOOSER =
+            Identifier.fromNamespaceAndPath(Hats.MODID, "textures/gui/hatchooser.png");
     private static final int GUI_W = 176;
     private static final int GUI_H = 170;
     private static final int PAGE_SIZE = 6;
@@ -186,8 +189,7 @@ public class HatScreen extends Screen {
             Item item = visibleHats.get(start + slot);
             ItemStack display = new ItemStack(item);
             Component name = display.getHoverName();
-            if (item instanceof HatItem hatItem
-                    && (view == View.CATEGORY || Config.showRarityColorsEverywhere)) {
+            if (item instanceof HatItem hatItem && Config.showRarityColorsEverywhere) {
                 int color = hatItem.getHatRarity().getColor();
                 name = name.copy().withStyle(style -> style.withColor(color));
             }
@@ -208,8 +210,10 @@ public class HatScreen extends Screen {
             HatRarity rarity = categories.get(i);
             addRenderableWidget(HatsButton.create(
                     guiLeft + 82, guiTop + 29 + i * 22, 88, 20,
-                    Component.literal(titleCase(rarity.name()))
-                            .withStyle(style -> style.withColor(rarity.getColor())),
+                    Config.showRarityColorsEverywhere
+                            ? Component.literal(titleCase(rarity.name()))
+                                    .withStyle(style -> style.withColor(rarity.getColor()))
+                            : Component.literal(titleCase(rarity.name())),
                     button -> showCategory(rarity)));
         }
     }
@@ -344,7 +348,7 @@ public class HatScreen extends Screen {
         addRenderableWidget(new HatsIconButton(
                 x, y + step * 6, 20, 20, HatsIcons.PERSONALISE,
                 Component.translatable("hats.gui.personalize"),
-                button -> minecraft.setScreen(new HatConfigScreen(this))));
+                button -> minecraft.gui.setScreen(new HatConfigScreen(this))));
 
         if (standEntityId < 0) {
             this.tradeButton = addRenderableWidget(new HatsIconButton(
@@ -399,8 +403,8 @@ public class HatScreen extends Screen {
     }
 
     private void handleFavourites() {
-        if (hasShiftDown() && !stagedHat.isEmpty()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stagedHat.getItem());
+        if (minecraft.hasShiftDown() && !stagedHat.isEmpty()) {
+            Identifier id = BuiltInRegistries.ITEM.getKey(stagedHat.getItem());
             if (id != null) {
                 ClientFavourites.toggle(id.toString());
             }
@@ -490,7 +494,7 @@ public class HatScreen extends Screen {
         String normalized = query.toLowerCase(Locale.ROOT).trim();
         for (Item item : HatsGui.unlockedHats(player)) {
             ItemStack stack = new ItemStack(item);
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(item);
+            Identifier id = BuiltInRegistries.ITEM.getKey(item);
             if (view == View.FAVOURITES && (id == null || !ClientFavourites.isFavourite(id.toString()))) {
                 continue;
             }
@@ -541,18 +545,18 @@ public class HatScreen extends Screen {
         }
         committed = true;
         if (standEntityId >= 0) {
-            HatPacketHandler.CHANNEL.sendToServer(new PacketUpdateHatStand(standEntityId, stagedHat.copy()));
+            HatPacketHandler.sendToServer(new PacketUpdateHatStand(standEntityId, stagedHat.copy()));
         } else if (stagedHat.isEmpty()) {
             HatEquipController.unequip(player);
         } else {
             HatEquipController.equipStack(player, stagedHat);
         }
-        minecraft.setScreen(null);
+        minecraft.gui.setScreen(null);
     }
 
     private void discardAndClose() {
         restoreOriginal();
-        minecraft.setScreen(null);
+        minecraft.gui.setScreen(null);
     }
 
     @Override
@@ -569,36 +573,63 @@ public class HatScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
-        graphics.blit(CHOOSER, guiLeft, guiTop, 0, 0, GUI_W, GUI_H, 256, 256);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        graphics.blit(RenderPipelines.GUI_TEXTURED, CHOOSER, guiLeft, guiTop, 0.0F, 0.0F, GUI_W, GUI_H, 256, 256);
 
         LivingEntity target = previewTarget();
         if (target != null) {
-            InventoryScreen.renderEntityInInventoryFollowsMouse(
-                    graphics,
-                    guiLeft + 42, guiTop + 155,
-                    55,
-                    (float) (guiLeft + 42) - mouseX,
-                    (float) (guiTop + 63) - mouseY,
-                    target
-            );
+            int footX = guiLeft + 42;
+            int footY = guiTop + 155;
+            int size = 55;
+            float xAngle = (float) Math.atan(((float) footX - mouseX) / 40.0F);
+            float yAngle = (float) Math.atan(((float) (guiTop + 63) - mouseY) / 40.0F);
+            float halfH = target.getBbHeight() * size / 2.0F;
+            float halfW = target.getBbWidth() * size / 2.0F;
+            int centerY = Math.round(footY - halfH);
+            int pad = size;
+            int x0 = Math.round(footX - halfW) - pad;
+            int x1 = Math.round(footX + halfW) + pad;
+            int y0 = Math.round(centerY - halfH) - pad;
+            int y1 = Math.round(centerY + halfH) + pad;
+            float savedYRot = target.getYRot();
+            float savedYRotO = target.yRotO;
+            float savedBody = target.yBodyRot;
+            float savedXRot = target.getXRot();
+            float savedHead = target.yHeadRot;
+            float savedHeadO = target.yHeadRotO;
+            target.yBodyRot = 180.0F + xAngle * 20.0F;
+            target.setYRot(180.0F + xAngle * 40.0F);
+            target.yRotO = target.getYRot();
+            target.setXRot(-yAngle * 20.0F);
+            target.yHeadRot = target.getYRot();
+            target.yHeadRotO = target.getYRot();
+            try {
+                InventoryScreen.renderEntityInInventoryFollowsAngle(
+                        graphics, x0, y0, x1, y1, size, 0.0F, xAngle, yAngle, target);
+            } finally {
+                target.yBodyRot = savedBody;
+                target.setYRot(savedYRot);
+                target.yRotO = savedYRotO;
+                target.setXRot(savedXRot);
+                target.yHeadRot = savedHead;
+                target.yHeadRotO = savedHeadO;
+            }
         }
 
         Component display = displayName();
         if (view != View.COLORIZER) {
             display = display.copy().append(" (" + (page + 1) + "/" + pageCount() + ")");
         }
-        graphics.drawString(font,
+        graphics.text(font,
                 Component.translatable("hats.gui.viewing").append(": ").append(display),
-                guiLeft + 1, guiTop - 10, 0xFFFFFF);
+                guiLeft + 1, guiTop - 10, 0xFFFFFFFF);
 
         if (search != null && search.visible) {
-            graphics.blit(HatsIcons.SEARCH, search.getX() - 20, search.getY() + 2,
-                    16, 16, 0, 0, 16, 16, 16, 16);
+            graphics.blit(RenderPipelines.GUI_TEXTURED, HatsIcons.SEARCH, search.getX() - 20, search.getY() + 2,
+                    0.0F, 0.0F, 16, 16, 16, 16, 16, 16);
         }
 
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         if (tradeButton != null && com.astryxion.hats.client.trade.ClientTradeState.hasIncomingOffers()) {
             graphics.fill(tradeButton.getX() + tradeButton.getWidth() - 5, tradeButton.getY() + 1,
                     tradeButton.getX() + tradeButton.getWidth() - 1, tradeButton.getY() + 5, 0xFFFF3333);
@@ -650,7 +681,38 @@ public class HatScreen extends Screen {
 
     public static LivingEntity getPreviewEntityForRendering() {
         Minecraft minecraft = Minecraft.getInstance();
-        return minecraft.screen instanceof HatScreen screen ? screen.previewTarget() : null;
+        return minecraft.gui.screen() instanceof HatScreen screen ? screen.previewTarget() : null;
+    }
+
+    private static void renderScrollingString(
+            GuiGraphicsExtractor graphics,
+            Font font,
+            Component text,
+            int minX,
+            int minY,
+            int maxX,
+            int maxY,
+            int color
+    ) {
+        if ((color & 0xFC000000) == 0) {
+            color |= 0xFF000000;
+        }
+        int textWidth = font.width(text);
+        int textY = (minY + maxY - 9) / 2 + 1;
+        int centerX = (minX + maxX) / 2;
+        int available = maxX - minX;
+        if (textWidth > available) {
+            int overflow = textWidth - available;
+            double time = Util.getMillis() / 1000.0;
+            double period = Math.max(overflow * 0.5, 3.0);
+            double wave = Math.sin((Math.PI / 2) * Math.cos((Math.PI * 2) * time / period)) / 2.0 + 0.5;
+            double offset = Mth.lerp(wave, 0.0, (double) overflow);
+            graphics.enableScissor(minX, minY, maxX, maxY);
+            graphics.text(font, text, minX - (int) offset, textY, color);
+            graphics.disableScissor();
+        } else {
+            graphics.centeredText(font, text, centerX, textY, color);
+        }
     }
 
     private enum View {
@@ -699,7 +761,7 @@ public class HatScreen extends Screen {
         }
 
         @Override
-        protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
             HatsWidgets.renderMinecraftStyleButton(graphics, getX(), getY(), getWidth(), getHeight(), buttonState());
             renderPreviewModel(graphics);
             if (enabled) {
@@ -711,7 +773,7 @@ public class HatScreen extends Screen {
             renderLabel(graphics);
         }
 
-        private void renderPreviewModel(GuiGraphics graphics) {
+        private void renderPreviewModel(GuiGraphicsExtractor graphics) {
             LivingEntity target = previewTarget();
             if (target == null) {
                 return;
@@ -723,8 +785,9 @@ public class HatScreen extends Screen {
         }
 
         @Override
-        protected void renderLabel(GuiGraphics graphics) {
-            int color = blocked ? 0xA0A0A0 : accessory.rarity.getColor();
+        protected void renderLabel(GuiGraphicsExtractor graphics) {
+            int color = blocked ? 0xA0A0A0
+                    : Config.showRarityColorsEverywhere ? accessory.rarity.getColor() : 0xFFFFFFFF;
             renderScrollingString(
                     graphics,
                     Minecraft.getInstance().font,
@@ -750,28 +813,27 @@ public class HatScreen extends Screen {
         }
 
         @Override
-        protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            super.renderWidget(graphics, mouseX, mouseY, partialTick);
-            int copies = ClientHatUnlocks.count(ForgeRegistries.ITEMS.getKey(hat));
+        protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            super.extractContents(graphics, mouseX, mouseY, partialTick);
+            int copies = ClientHatUnlocks.count(BuiltInRegistries.ITEM.getKey(hat));
             if (copies <= 1) {
                 return;
             }
             var font = Minecraft.getInstance().font;
             float scale = 0.6F;
             String label = "x" + copies;
-            graphics.pose().pushPose();
+            graphics.pose().pushMatrix();
             graphics.pose().translate(
                     getX() + getWidth() - 2 - font.width(label) * scale,
-                    getY() + getHeight() - 2 - font.lineHeight * scale,
-                    300.0F);
-            graphics.pose().scale(scale, scale, 1.0F);
-            graphics.drawString(font, label, 0, 0, 0xFFFFFFFF, true);
-            graphics.pose().popPose();
+                    getY() + getHeight() - 2 - font.lineHeight * scale);
+            graphics.pose().scale(scale, scale);
+            graphics.text(font, label, 0, 0, 0xFFFFFFFF, true);
+            graphics.pose().popMatrix();
         }
 
         @Override
-        protected void renderLabel(GuiGraphics graphics) {
-            int color = active ? 0xFFFFFF : 0xA0A0A0;
+        protected void renderLabel(GuiGraphicsExtractor graphics) {
+            int color = active ? 0xFFFFFFFF : 0xFFA0A0A0;
             renderScrollingString(
                     graphics,
                     Minecraft.getInstance().font,

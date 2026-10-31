@@ -7,6 +7,7 @@ import com.astryxion.hats.common.hat.HatRarity;
 import net.minecraft.world.item.ItemStack;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -42,7 +43,9 @@ public final class TabulaHats {
     public static List<TabulaHatDefinition> discover(Set<String> reservedIds) {
         BY_ID.clear();
         hatsRoot = locateRoot();
-        if (hatsRoot == null || !Files.exists(hatsRoot)) {
+
+        List<String> relatives = listTblRelatives();
+        if (relatives.isEmpty()) {
             Hats.LOGGER.warn("legacy_tabula hats folder not found");
             return List.of();
         }
@@ -52,22 +55,12 @@ public final class TabulaHats {
             reservedCompact.add(compact(reserved));
         }
 
-        List<Path> tbls = new ArrayList<>();
-        try (Stream<Path> walk = Files.walk(hatsRoot)) {
-            walk.filter(p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".tbl"))
-                    .sorted()
-                    .forEach(tbls::add);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to scan legacy tabula hats", e);
-        }
-
         List<TabulaHatDefinition> accessories = new ArrayList<>();
-        for (Path tbl : tbls) {
-            String relative = relativePath(tbl);
+        for (String relative : relatives) {
             String tblName = tblFileName(relative);
             List<String> notes = List.of();
             try {
-                notes = TabulaTblReader.readNotes(tbl);
+                notes = readNotes(relative);
             } catch (IOException e) {
                 Hats.LOGGER.warn("Could not read notes for tabula hat {}", relative);
             }
@@ -142,6 +135,69 @@ public final class TabulaHats {
 
     public static Iterable<String> ids() {
         return BY_ID.keySet();
+    }
+
+    public static InputStream open(String relativePath) throws IOException {
+        String full = ROOT + "/" + relativePath.replace('\\', '/');
+        var contents = modContents();
+        if (contents != null) {
+            InputStream in = contents.openFile(full);
+            if (in != null) {
+                return in;
+            }
+        }
+        Path path = resolve(relativePath);
+        if (path != null && Files.isRegularFile(path)) {
+            return Files.newInputStream(path);
+        }
+        return null;
+    }
+
+    private static List<String> readNotes(String relative) throws IOException {
+        try (InputStream in = open(relative)) {
+            if (in == null) {
+                return List.of();
+            }
+            return TabulaTblReader.readNotes(in);
+        }
+    }
+
+    private static List<String> listTblRelatives() {
+        List<String> relatives = new ArrayList<>();
+        var contents = modContents();
+        if (contents != null) {
+            String prefix = ROOT + "/";
+            contents.visitContent(prefix, (path, resource) -> {
+                if (path.startsWith(prefix) && path.endsWith(".tbl")) {
+                    relatives.add(path.substring(prefix.length()));
+                }
+            });
+        }
+        if (relatives.isEmpty() && hatsRoot != null && Files.exists(hatsRoot)) {
+            try (Stream<Path> walk = Files.walk(hatsRoot)) {
+                walk.filter(p -> Files.isRegularFile(p) && p.getFileName().toString().endsWith(".tbl"))
+                        .sorted()
+                        .map(TabulaHats::relativePath)
+                        .forEach(relatives::add);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to scan legacy tabula hats", e);
+            }
+        }
+        relatives.sort(String::compareTo);
+        return relatives;
+    }
+
+    private static net.neoforged.fml.jarcontents.JarContents modContents() {
+        try {
+            var info = net.neoforged.fml.ModList.get().getModFileById(Hats.MODID);
+            if (info == null) {
+                return null;
+            }
+            return info.getFile().getContents();
+        } catch (Exception e) {
+            Hats.LOGGER.warn("Could not read hats mod jar", e);
+            return null;
+        }
     }
 
     public static Path resolve(String relativePath) {
@@ -367,7 +423,7 @@ public final class TabulaHats {
         try {
             URL url = TabulaHats.class.getClassLoader().getResource(ROOT);
             if (url == null) {
-                return null;
+                return modContentPath(ROOT);
             }
             if ("jar".equals(url.getProtocol())) {
                 URI uri = url.toURI();
@@ -391,5 +447,19 @@ public final class TabulaHats {
             Hats.LOGGER.error("Failed to locate legacy tabula hats", e);
             return null;
         }
+    }
+
+    private static Path modContentPath(String path) {
+        var info = net.neoforged.fml.ModList.get().getModFileById(Hats.MODID);
+        if (info == null) {
+            return null;
+        }
+        for (Path root : info.getFile().getContents().getContentRoots()) {
+            Path candidate = root.resolve(path);
+            if (Files.isDirectory(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 }

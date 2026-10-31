@@ -24,7 +24,17 @@ public final class TabulaTblReader {
     private TabulaTblReader() {}
 
     public static TabulaHatModelData readModel(Path tbl) throws IOException {
-        try (ZipInputStream zip = openZip(tbl)) {
+        try (InputStream in = Files.newInputStream(tbl)) {
+            return readModel(in, tbl.getFileName().toString());
+        }
+    }
+
+    public static TabulaHatModelData readModel(InputStream in) throws IOException {
+        return readModel(in, "model");
+    }
+
+    private static TabulaHatModelData readModel(InputStream in, String name) throws IOException {
+        try (ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 if (MODEL_ENTRY.equals(entry.getName())) {
@@ -32,11 +42,21 @@ public final class TabulaTblReader {
                 }
             }
         }
-        throw new IOException("No model.json in " + tbl.getFileName());
+        throw new IOException("No model.json in " + name);
     }
 
     public static byte[] readTexture(Path tbl) throws IOException {
-        try (ZipInputStream zip = openZip(tbl)) {
+        try (InputStream in = Files.newInputStream(tbl)) {
+            return readTexture(in, tbl.getFileName().toString());
+        }
+    }
+
+    public static byte[] readTexture(InputStream in) throws IOException {
+        return readTexture(in, "model");
+    }
+
+    private static byte[] readTexture(InputStream in, String name) throws IOException {
+        try (ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 if (TEXTURE_ENTRY.equals(entry.getName())) {
@@ -44,11 +64,17 @@ public final class TabulaTblReader {
                 }
             }
         }
-        throw new IOException("No texture.png in " + tbl.getFileName());
+        throw new IOException("No texture.png in " + name);
     }
 
     public static List<String> readNotes(Path tbl) throws IOException {
-        try (ZipInputStream zip = openZip(tbl)) {
+        try (InputStream in = Files.newInputStream(tbl)) {
+            return readNotes(in);
+        }
+    }
+
+    public static List<String> readNotes(InputStream in) throws IOException {
+        try (ZipInputStream zip = new ZipInputStream(in)) {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 if (MODEL_ENTRY.equals(entry.getName())) {
@@ -140,10 +166,6 @@ public final class TabulaTblReader {
             notes.add(el.getAsString());
         }
         return notes;
-    }
-
-    private static ZipInputStream openZip(Path path) throws IOException {
-        return new ZipInputStream(Files.newInputStream(path));
     }
 
     private static float getFloat(JsonObject obj, String key) {

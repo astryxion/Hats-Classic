@@ -30,14 +30,14 @@ public final class ClientTradeFlow {
 
     public static void openPartnerSelect() {
         ClientTradeState.clearNearby();
-        HatPacketHandler.CHANNEL.sendToServer(new PacketRequestNearbyPlayers());
-        Minecraft.getInstance().setScreen(new TradePartnerSelectScreen());
+        HatPacketHandler.sendToServer(new PacketRequestNearbyPlayers());
+        Minecraft.getInstance().gui.setScreen(new TradePartnerSelectScreen());
     }
 
     public static void openOfferBuilder(UUID targetUuid, String targetName) {
         ClientTradeState.setActiveBuilderTarget(targetUuid);
-        HatPacketHandler.CHANNEL.sendToServer(new PacketRequestPeerInventory(targetUuid));
-        Minecraft.getInstance().setScreen(new TradeOfferScreen(targetUuid, targetName));
+        HatPacketHandler.sendToServer(new PacketRequestPeerInventory(targetUuid));
+        Minecraft.getInstance().gui.setScreen(new TradeOfferScreen(targetUuid, targetName));
     }
 
     public static void openIncoming(UUID offerId) {
@@ -45,12 +45,12 @@ public final class ClientTradeFlow {
         if (offer == null) {
             return;
         }
-        Minecraft.getInstance().setScreen(new TradeIncomingScreen(offer));
+        Minecraft.getInstance().gui.setScreen(new TradeIncomingScreen(offer));
     }
 
     public static void closeBuilder() {
         ClientTradeState.setActiveBuilderTarget(null);
-        HatPacketHandler.CHANNEL.sendToServer(new PacketCloseTradeBuilder());
+        HatPacketHandler.sendToServer(new PacketCloseTradeBuilder());
     }
 
     public static void onPartnerLeft(UUID targetUuid) {
@@ -60,12 +60,11 @@ public final class ClientTradeFlow {
         }
         ClientTradeState.setActiveBuilderTarget(null);
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen instanceof TradeOfferScreen || minecraft.screen instanceof TradePartnerSelectScreen) {
+        if (minecraft.gui.screen() instanceof TradeOfferScreen || minecraft.gui.screen() instanceof TradePartnerSelectScreen) {
             HatsGui.open();
             if (minecraft.player != null) {
-                minecraft.player.displayClientMessage(
-                        Component.translatable("hats.trade.partnerLeft").withStyle(ChatFormatting.RED),
-                        true);
+                minecraft.player.sendOverlayMessage(
+                        Component.translatable("hats.trade.partnerLeft").withStyle(ChatFormatting.RED));
             }
         }
     }

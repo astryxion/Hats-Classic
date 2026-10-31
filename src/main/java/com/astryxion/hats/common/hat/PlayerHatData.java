@@ -1,7 +1,7 @@
 package com.astryxion.hats.common.hat;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.Set;
 
@@ -14,38 +14,38 @@ public interface PlayerHatData {
     /**
      * Unlock a hat for the player
      */
-    void unlockHat(ResourceLocation hatId);
+    void unlockHat(Identifier hatId);
 
     /**
      * Always add a hat to the unlock set (used by trades, even in cosmetic mode).
      */
-    void grantHat(ResourceLocation hatId);
+    void grantHat(Identifier hatId);
 
     /**
      * Always remove a hat from the unlock set (used by trades).
      */
-    void revokeHat(ResourceLocation hatId);
+    void revokeHat(Identifier hatId);
 
     /**
      * Check if a hat is unlocked
      */
-    boolean hasHat(ResourceLocation hatId);
+    boolean hasHat(Identifier hatId);
 
     /**
      * Get all unlocked hats
      */
-    Set<ResourceLocation> getUnlockedHats();
+    Set<Identifier> getUnlockedHats();
 
     /**
      * 🔧 GET the currently equipped hat ID.
      * Returns null if no hat is equipped.
      */
-    ResourceLocation getEquippedHat();
+    Identifier getEquippedHat();
 
     /**
      * 🔧 SET the currently equipped hat ID.
      */
-    void setEquippedHat(ResourceLocation hatId);
+    void setEquippedHat(Identifier hatId);
 
     /**
      * 🔧 Check if the player has already seen the initial mode message.

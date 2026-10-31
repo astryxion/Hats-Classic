@@ -8,49 +8,52 @@ import com.astryxion.hats.client.tabula.TabulaHatRenderer;
 import com.astryxion.hats.common.hat.HatColor;
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.common.tabula.TabulaHats;
-import com.astryxion.hats.mixin.AgeableListModelAccessor;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.AgeableHierarchicalModel;
-import net.minecraft.client.model.AgeableListModel;
+import net.minecraft.client.model.BabyModelTransform;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HeadedModel;
-import net.minecraft.client.model.HierarchicalModel;
-import net.minecraft.client.model.HierarchicalModel;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.model.geom.builders.UVPair;
 import net.minecraft.client.renderer.Sheets;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
-import net.minecraft.client.renderer.entity.layers.SheepFurLayer;
+import net.minecraft.client.renderer.entity.layers.SheepWoolLayer;
 import net.minecraft.client.renderer.entity.layers.SlimeOuterLayer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.core.Direction;
+import net.minecraft.client.resources.model.cuboid.ItemTransform;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
+import net.minecraft.util.context.ContextKey;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.animal.Rabbit;
-import net.minecraft.world.entity.animal.Sheep;
-import net.minecraft.world.entity.animal.SnowGolem;
+import net.minecraft.world.entity.animal.rabbit.Rabbit;
+import net.minecraft.world.entity.animal.sheep.Sheep;
+import net.minecraft.world.entity.animal.golem.SnowGolem;
 import net.minecraft.world.entity.monster.Guardian;
-import net.minecraft.world.entity.monster.MagmaCube;
+import net.minecraft.world.entity.monster.cubemob.MagmaCube;
 import net.minecraft.world.entity.monster.Shulker;
-import net.minecraft.world.entity.monster.Slime;
-import net.minecraft.world.entity.monster.Spider;
+import net.minecraft.world.entity.monster.cubemob.Slime;
+import net.minecraft.world.entity.monster.spider.Spider;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+
+import org.joml.Vector3f;
+import org.joml.Vector3fc;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Sit hats on the actual head cube, then apply the vanilla HEAD-item orientation.
@@ -61,8 +64,14 @@ import java.util.Optional;
  * and the center on players. Centering on the real cube first makes every mob
  * look like a player head to the hat item.
  */
-public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
-        extends RenderLayer<T, M> {
+public class HatRenderLayer<S extends LivingEntityRenderState, M extends EntityModel<? super S>>
+        extends RenderLayer<S, M> {
+
+    public static final ContextKey<LivingEntity> HAT_ENTITY =
+            new ContextKey<>(Identifier.fromNamespaceAndPath("hats", "hat_entity"));
+    /** Captured during extract. Submit runs later, after GUI previews restore the live hat. */
+    public static final ContextKey<ItemStack> HAT_STACK =
+            new ContextKey<>(Identifier.fromNamespaceAndPath("hats", "hat_stack"));
 
     private static final String[] HEAD_PART_NAMES = {
             "head", "Head", "body", "Body"
@@ -94,9 +103,9 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             -4.0F, 16.0F, -4.0F, 4.0F, 24.0F, 4.0F
     };
 
-    private final LivingEntityRenderer<T, M> parent;
+    private final LivingEntityRenderer<?, S, M> parent;
 
-    public HatRenderLayer(LivingEntityRenderer<T, M> parent) {
+    public HatRenderLayer(LivingEntityRenderer<?, S, M> parent) {
         super(parent);
         this.parent = parent;
     }
@@ -116,19 +125,22 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
     }
 
     @Override
-    public void render(
+    public void submit(
             PoseStack poseStack,
-            MultiBufferSource buffer,
+            SubmitNodeCollector collector,
             int light,
-            T entity,
-            float limbSwing,
-            float limbSwingAmount,
-            float partialTicks,
-            float ageInTicks,
-            float netHeadYaw,
-            float headPitch
+            S state,
+            float yRot,
+            float xRot
     ) {
-        ItemStack hat = ClientHatPreview.orWorn(entity);
+        LivingEntity entity = state.getRenderData(HAT_ENTITY);
+        if (entity == null) {
+            return;
+        }
+        ItemStack hat = state.getRenderData(HAT_STACK);
+        if (hat == null) {
+            hat = ClientHatPreview.orWorn(entity);
+        }
         if (hat.isEmpty()) {
             return;
         }
@@ -162,10 +174,13 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
                 geometryScale *= 1.1F;
             }
             applySkinLayersClearance(poseStack, entity);
+            if (back) {
+                poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
+            }
             TabulaHatPlacement.applyZFight(poseStack);
             TabulaHatRenderer.render(
                     poseStack,
-                    buffer,
+                    collector,
                     light,
                     OverlayTexture.NO_OVERLAY,
                     hat,
@@ -188,32 +203,90 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             glueHatToRump(poseStack, hat, entity);
         }
 
-        MultiBufferSource hatBuffer = alphaBuffer(buffer, HatColor.alpha(hat));
-        Minecraft.getInstance().getItemRenderer().renderStatic(
-                entity,
-                hat,
-                ItemDisplayContext.HEAD,
-                false,
-                poseStack,
-                hatBuffer,
-                entity.level(),
-                light,
-                OverlayTexture.NO_OVERLAY,
-                0
-        );
+        submitHatItem(poseStack, collector, entity, hat, light, OverlayTexture.NO_OVERLAY);
 
         poseStack.popPose();
     }
 
-    private static MultiBufferSource alphaBuffer(MultiBufferSource source, int alpha) {
-        if (alpha >= 255) {
-            return source;
+    public static void submitHatItem(
+            PoseStack poseStack,
+            SubmitNodeCollector collector,
+            LivingEntity entity,
+            ItemStack hat,
+            int light,
+            int overlay
+    ) {
+        ItemStackRenderState state = new ItemStackRenderState();
+        Minecraft.getInstance().getItemModelResolver().updateForLiving(state, hat, ItemDisplayContext.HEAD, entity);
+        submitResolved(poseStack, collector, state, hat, light, overlay);
+    }
+
+    public static void submitHatItem(
+            PoseStack poseStack,
+            SubmitNodeCollector collector,
+            ItemStack hat,
+            int light,
+            int overlay
+    ) {
+        submitHatItem(poseStack, collector, hat, light, overlay, 0);
+    }
+
+    public static void submitHatItem(
+            PoseStack poseStack,
+            SubmitNodeCollector collector,
+            ItemStack hat,
+            int light,
+            int overlay,
+            int seed
+    ) {
+        ItemStackRenderState state = new ItemStackRenderState();
+        Minecraft minecraft = Minecraft.getInstance();
+        minecraft.getItemModelResolver().updateForTopItem(
+                state, hat, ItemDisplayContext.HEAD, minecraft.level, null, seed);
+        submitResolved(poseStack, collector, state, hat, light, overlay);
+    }
+
+    private static void submitResolved(
+            PoseStack poseStack,
+            SubmitNodeCollector collector,
+            ItemStackRenderState state,
+            ItemStack hat,
+            int light,
+            int overlay
+    ) {
+        int alpha = HatColor.alpha(hat);
+        if (alpha >= 255 || hasSpecialLayer(state)) {
+            state.submit(poseStack, collector, light, overlay, 0);
+            return;
         }
         float multiplier = Math.max(0, alpha) / 255.0F;
-        return renderType -> new AlphaVertexConsumer(
-                source.getBuffer(Sheets.translucentItemSheet()),
-                multiplier
-        );
+        for (ItemStackRenderState.LayerRenderState layer : itemLayers(state)) {
+            List<BakedQuad> quads = layer.prepareQuadList();
+            if (quads.isEmpty()) {
+                continue;
+            }
+            ItemTransform transform = transformOf(layer);
+            PoseStack transformed = new PoseStack();
+            transformed.last().set(poseStack.last());
+            transform.apply(false, transformed.last());
+            collector.submitCustomGeometry(transformed, Sheets.translucentItemSheet(), (pose, buffer) -> {
+                AlphaVertexConsumer consumer = new AlphaVertexConsumer(buffer, multiplier);
+                for (BakedQuad quad : quads) {
+                    Vector3fc normal = quad.direction().getUnitVec3f();
+                    for (int vertex = 0; vertex < 4; vertex++) {
+                        Vector3fc position = quad.position(vertex);
+                        long packedUv = quad.packedUV(vertex);
+                        int baked = quad.bakedColors().color(vertex);
+                        consumer.addVertex(pose, position.x(), position.y(), position.z())
+                                .setColor(baked)
+                                .setUv(UVPair.unpackU(packedUv), UVPair.unpackV(packedUv))
+                                .setOverlay(overlay)
+                                .setLight(light)
+                                .setNormal(pose, normal.x(), normal.y(), normal.z());
+                    }
+                }
+            });
+        }
     }
 
     static final class AlphaVertexConsumer implements VertexConsumer {
@@ -227,55 +300,100 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
         }
 
         @Override
-        public VertexConsumer vertex(double x, double y, double z) {
-            delegate.vertex(x, y, z);
+        public VertexConsumer addVertex(float x, float y, float z) {
+            delegate.addVertex(x, y, z);
             return this;
         }
 
         @Override
-        public VertexConsumer color(int red, int green, int blue, int alpha) {
-            delegate.color(red, green, blue, Math.round(alpha * this.alpha));
+        public VertexConsumer setColor(int red, int green, int blue, int alpha) {
+            delegate.setColor(red, green, blue, Math.round(alpha * this.alpha));
             return this;
         }
 
         @Override
-        public VertexConsumer uv(float u, float v) {
-            delegate.uv(u, v);
+        public VertexConsumer setColor(int color) {
+            int a = (color >>> 24) & 0xFF;
+            int scaled = Math.round(a * this.alpha);
+            delegate.setColor((color & 0x00FFFFFF) | (scaled << 24));
             return this;
         }
 
         @Override
-        public VertexConsumer overlayCoords(int u, int v) {
-            delegate.overlayCoords(u, v);
+        public VertexConsumer setUv(float u, float v) {
+            delegate.setUv(u, v);
             return this;
         }
 
         @Override
-        public VertexConsumer uv2(int u, int v) {
-            delegate.uv2(u, v);
+        public VertexConsumer setUv1(int u, int v) {
+            delegate.setUv1(u, v);
             return this;
         }
 
         @Override
-        public VertexConsumer normal(float x, float y, float z) {
-            delegate.normal(x, y, z);
+        public VertexConsumer setUv2(int u, int v) {
+            delegate.setUv2(u, v);
             return this;
         }
 
         @Override
-        public void endVertex() {
-            delegate.endVertex();
+        public VertexConsumer setNormal(float x, float y, float z) {
+            delegate.setNormal(x, y, z);
+            return this;
         }
 
         @Override
-        public void defaultColor(int red, int green, int blue, int alpha) {
-            delegate.defaultColor(red, green, blue, Math.round(alpha * this.alpha));
+        public VertexConsumer setLineWidth(float width) {
+            delegate.setLineWidth(width);
+            return this;
         }
+    }
 
-        @Override
-        public void unsetDefaultColor() {
-            delegate.unsetDefaultColor();
+    private static boolean hasSpecialLayer(ItemStackRenderState state) {
+        try {
+            Field field = ItemStackRenderState.LayerRenderState.class.getDeclaredField("specialRenderer");
+            field.setAccessible(true);
+            for (ItemStackRenderState.LayerRenderState layer : itemLayers(state)) {
+                if (field.get(layer) != null) {
+                    return true;
+                }
+            }
+        } catch (ReflectiveOperationException ignored) {
         }
+        return false;
+    }
+
+    private static List<ItemStackRenderState.LayerRenderState> itemLayers(ItemStackRenderState state) {
+        try {
+            Field count = ItemStackRenderState.class.getDeclaredField("activeLayerCount");
+            Field layers = ItemStackRenderState.class.getDeclaredField("layers");
+            count.setAccessible(true);
+            layers.setAccessible(true);
+            int n = count.getInt(state);
+            ItemStackRenderState.LayerRenderState[] all =
+                    (ItemStackRenderState.LayerRenderState[]) layers.get(state);
+            List<ItemStackRenderState.LayerRenderState> result = new ArrayList<>(n);
+            for (int i = 0; i < n && i < all.length; i++) {
+                result.add(all[i]);
+            }
+            return result;
+        } catch (ReflectiveOperationException ignored) {
+            return List.of();
+        }
+    }
+
+    private static ItemTransform transformOf(ItemStackRenderState.LayerRenderState layer) {
+        try {
+            Field field = ItemStackRenderState.LayerRenderState.class.getDeclaredField("itemTransform");
+            field.setAccessible(true);
+            Object value = field.get(layer);
+            if (value instanceof ItemTransform transform) {
+                return transform;
+            }
+        } catch (ReflectiveOperationException ignored) {
+        }
+        return ItemTransform.NO_TRANSFORM;
     }
 
     /**
@@ -285,7 +403,7 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
      * extra face. Scale is uniform from skull width so the hat keeps its
      * shape; ear children only shift the XZ center (piglin).
      */
-    private void applyHeadCubeCenter(PoseStack poseStack, ModelPart head, T entity) {
+    private void applyHeadCubeCenter(PoseStack poseStack, ModelPart head, LivingEntity entity) {
         float[] cube = cubeFor(entity, head);
         if (cube == null) {
             return;
@@ -343,11 +461,11 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
     }
 
     private static boolean hatOnBack(LivingEntity entity) {
-        return entity.getType() == EntityType.HORSE
-                || entity.getType() == EntityType.DONKEY
-                || entity.getType() == EntityType.MULE
-                || entity.getType() == EntityType.SKELETON_HORSE
-                || entity.getType() == EntityType.ZOMBIE_HORSE;
+        return entity.getType() == EntityTypes.HORSE
+                || entity.getType() == EntityTypes.DONKEY
+                || entity.getType() == EntityTypes.MULE
+                || entity.getType() == EntityTypes.SKELETON_HORSE
+                || entity.getType() == EntityTypes.ZOMBIE_HORSE;
     }
 
     /**
@@ -522,20 +640,20 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
         return entity instanceof Slime
                 || entity instanceof MagmaCube
                 || entity instanceof Guardian
-                || entity.getType() == EntityType.GHAST;
+                || entity.getType() == EntityTypes.GHAST;
     }
 
     private static boolean usesFrontalSitCube(LivingEntity entity) {
         return entity instanceof Guardian
-                || entity.getType() == EntityType.BEE
-                || entity.getType() == EntityType.CAMEL;
+                || entity.getType() == EntityTypes.BEE
+                || entity.getType() == EntityTypes.CAMEL;
     }
 
     private static boolean usesUprightSkullCube(LivingEntity entity) {
         EntityType<?> type = entity.getType();
-        return type == EntityType.CAMEL
-                || type == EntityType.LLAMA
-                || type == EntityType.TRADER_LLAMA;
+        return type == EntityTypes.CAMEL
+                || type == EntityTypes.LLAMA
+                || type == EntityTypes.TRADER_LLAMA;
     }
 
     private static float axisScale(float size) {
@@ -557,7 +675,7 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
         return true;
     }
 
-    private float[] cubeFor(T entity, ModelPart head) {
+    private float[] cubeFor(LivingEntity entity, ModelPart head) {
         if (hatOnBack(entity)) {
             float[] back = primaryCube(head);
             if (back != null) {
@@ -581,7 +699,7 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             return SLIME_OUTER_CUBE.clone();
         }
         if (entity instanceof Sheep sheep && !sheep.isSheared()) {
-            float[] wool = sheepWoolHeadCube();
+            float[] wool = sheepWoolHeadCube(entity);
             if (wool != null) {
                 return wool;
             }
@@ -600,25 +718,28 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
      * Read the live sheep fur layer's head cubes so woolly hats sit on wool
      * and sheared hats fall back to the skull.
      */
-    private float[] sheepWoolHeadCube() {
+    private float[] sheepWoolHeadCube(LivingEntity entity) {
         for (Object layer : layersOf(parent)) {
-            if (!(layer instanceof SheepFurLayer)) {
+            if (!(layer instanceof SheepWoolLayer)) {
                 continue;
             }
-            Object furModel = firstEntityModelField(layer);
-            if (furModel instanceof AgeableListModelAccessor ageable) {
-                ModelPart woolHead = firstPart(ageable.hats$headParts());
-                if (woolHead != null) {
-                    float[] cube = primaryCube(woolHead);
-                    if (cube != null) {
-                        return cube;
-                    }
-                }
+            Object furModel = entity.isBaby() ? namedEntityModelField(layer, "babyModel") : namedEntityModelField(layer, "adultModel");
+            if (furModel == null) {
+                furModel = firstEntityModelField(layer);
             }
             if (furModel instanceof HeadedModel headed) {
                 float[] cube = primaryCube(headed.getHead());
                 if (cube != null) {
                     return cube;
+                }
+            }
+            if (furModel instanceof EntityModel<?> woolModel) {
+                ModelPart woolHead = findDescendant(woolModel.root(), "head");
+                if (woolHead != null) {
+                    float[] cube = primaryCube(woolHead);
+                    if (cube != null) {
+                        return cube;
+                    }
                 }
             }
         }
@@ -635,22 +756,22 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
                 continue;
             }
             Object outerModel = firstEntityModelField(layer);
-            if (outerModel instanceof HierarchicalModel<?> hierarchical) {
-                ModelPart body2 = findDescendant(hierarchical.root(), "body2");
+            if (outerModel instanceof EntityModel<?> entityModel) {
+                ModelPart body2 = findDescendant(entityModel.root(), "body2");
                 if (body2 != null) {
                     float[] box = largestCube(cubesOf(body2), 0.0F, 0.0F, 0.0F);
                     if (box != null) {
                         return box;
                     }
                 }
-                ModelPart cubePart = findDescendant(hierarchical.root(), "cube");
+                ModelPart cubePart = findDescendant(entityModel.root(), "cube");
                 if (cubePart != null) {
                     float[] box = primaryCube(cubePart);
                     if (box != null) {
                         return box;
                     }
                 }
-                float[] fromRoot = primaryCube(hierarchical.root());
+                float[] fromRoot = primaryCube(entityModel.root());
                 if (fromRoot != null) {
                     return fromRoot;
                 }
@@ -688,11 +809,8 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
      * whole tree (including {@code layer*} children) and ignore the dummy.
      */
     private float[] magmaShellCube() {
-        EntityModel<T> model = getParentModel();
-        if (!(model instanceof HierarchicalModel<?> hierarchical)) {
-            return null;
-        }
-        return collectMagmaBounds(hierarchical.root(), 0.0F, 0.0F, 0.0F);
+        EntityModel<?> model = getParentModel();
+        return collectMagmaBounds(model.root(), 0.0F, 0.0F, 0.0F);
     }
 
     private static float[] collectMagmaBounds(ModelPart part, float ox, float oy, float oz) {
@@ -797,24 +915,25 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
      */
     private static void glueHatToRump(PoseStack poseStack, ItemStack hat, LivingEntity entity) {
         try {
-            BakedModel model = Minecraft.getInstance()
-                    .getItemRenderer()
-                    .getModel(hat, entity.level(), entity, 0);
-            List<org.joml.Vector3f> verts = bakedVertices(model);
+            ItemStackRenderState state = new ItemStackRenderState();
+            Minecraft.getInstance().getItemModelResolver().updateForLiving(state, hat, ItemDisplayContext.HEAD, entity);
+            List<ItemStackRenderState.LayerRenderState> layers = itemLayers(state);
+            if (layers.isEmpty()) {
+                return;
+            }
+            ItemTransform head = transformOf(layers.get(0));
+            List<org.joml.Vector3f> verts = bakedVertices(layers);
             if (verts.isEmpty()) {
                 return;
             }
 
             PoseStack scratch = new PoseStack();
-            net.minecraft.client.renderer.block.model.ItemTransform head =
-                    model.getTransforms().getTransform(ItemDisplayContext.HEAD);
-            head.apply(false, scratch);
-            scratch.translate(-0.5F, -0.5F, -0.5F);
+            head.apply(false, scratch.last());
             org.joml.Matrix4f matrix = scratch.last().pose();
 
-            float cx = head.translation.x();
-            float cz = head.translation.z();
-            float radius = HEAD_SIT_RADIUS * Math.max(head.scale.x(), 1.0F);
+            float cx = head.translation().x();
+            float cz = head.translation().z();
+            float radius = HEAD_SIT_RADIUS * Math.max(head.scale().x(), 1.0F);
 
             float sitY = Float.POSITIVE_INFINITY;
             float nearestDist = Float.POSITIVE_INFINITY;
@@ -844,13 +963,10 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
         }
     }
 
-    private static List<org.joml.Vector3f> bakedVertices(BakedModel model) {
+    private static List<org.joml.Vector3f> bakedVertices(List<ItemStackRenderState.LayerRenderState> layers) {
         List<org.joml.Vector3f> verts = new ArrayList<>();
-        RandomSource random = RandomSource.create(42L);
-        collectVertices(model.getQuads(null, null, random), verts);
-        for (Direction direction : Direction.values()) {
-            random.setSeed(42L);
-            collectVertices(model.getQuads(null, direction, random), verts);
+        for (ItemStackRenderState.LayerRenderState layer : layers) {
+            collectVertices(layer.prepareQuadList(), verts);
         }
         return verts;
     }
@@ -860,28 +976,19 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             return;
         }
         for (BakedQuad quad : quads) {
-            int[] vertices = quad.getVertices();
-            int stride = vertices.length / 4;
-            if (stride < 3) {
-                continue;
-            }
             for (int i = 0; i < 4; i++) {
-                int base = i * stride;
-                verts.add(new org.joml.Vector3f(
-                        Float.intBitsToFloat(vertices[base]),
-                        Float.intBitsToFloat(vertices[base + 1]),
-                        Float.intBitsToFloat(vertices[base + 2])
-                ));
+                Vector3fc position = quad.position(i);
+                verts.add(new org.joml.Vector3f(position.x(), position.y(), position.z()));
             }
         }
     }
 
-    private ModelPart attachToHead(PoseStack poseStack, T entity) {
+    private ModelPart attachToHead(PoseStack poseStack, LivingEntity entity) {
         return attachToHead(poseStack, entity, false);
     }
 
-    private ModelPart attachToHead(PoseStack poseStack, T entity, boolean forceHead) {
-        EntityModel<T> model = getParentModel();
+    private ModelPart attachToHead(PoseStack poseStack, LivingEntity entity, boolean forceHead) {
+        EntityModel<?> model = getParentModel();
 
         if (MoBendsHatCompat.isMoBendsLoaded() && MoBendsHatCompat.tryApplyAnimatedMobendsHead(poseStack)) {
             if (model instanceof HeadedModel headed) {
@@ -891,9 +998,9 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             // vanilla reference cube without applying its pose so the existing
             // cube-centering step still moves the hat from that pivot to the
             // center/front of the spider's skull.
-            if (entity instanceof Spider && model instanceof HierarchicalModel<?> hierarchical) {
+            if (entity instanceof Spider) {
                 try {
-                    return hierarchical.root().getChild("head");
+                    return model.root().getChild("head");
                 } catch (Exception ignored) {
                 }
             }
@@ -913,8 +1020,11 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             // RabbitModel is not HeadedModel, and production renames the head
             // field. The 0.6 scale lives inside renderToBuffer, so layers never
             // inherit it — without both, the hat sits at the body origin.
-            applyRabbitRenderScale(poseStack, entity.isBaby() || model.young);
-            ModelPart head = findRabbitHead(model);
+            applyRabbitRenderScale(poseStack, entity.isBaby());
+            ModelPart head = findDescendant(model.root(), "head");
+            if (head == null) {
+                head = findRabbitHead(model);
+            }
             if (head != null) {
                 head.translateAndRotate(poseStack);
             }
@@ -928,12 +1038,13 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
 
         applyMobModelScale(poseStack, model, entity);
 
-        if (entity.getType() == EntityType.AXOLOTL) {
+        if (entity.getType() == EntityTypes.AXOLOTL) {
             // headParts() is empty; head is a child of body and only renders
             // through body.render(). Hats must apply body then head.
             ModelPart body = null;
-            if (model instanceof AgeableListModelAccessor ageable) {
-                body = firstPart(ageable.hats$bodyParts());
+            ModelPart axolotlRoot = model.root();
+            if (axolotlRoot != null && axolotlRoot.hasChild("body")) {
+                body = axolotlRoot.getChild("body");
             }
             if (body == null) {
                 body = findNamedPart(model, "body");
@@ -955,67 +1066,61 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             // The head stays inside the box; the lid is what opens.
             ModelPart lid = findBone(model, "lid");
             if (lid != null) {
-                if (model instanceof HierarchicalModel<?> hierarchical) {
-                    List<ModelPart> chain = buildChain(hierarchical.root(), lid);
-                    if (chain != null) {
-                        for (ModelPart bone : chain) {
-                            bone.translateAndRotate(poseStack);
-                        }
-                        return lid;
+                List<ModelPart> chain = buildChain(model.root(), lid);
+                if (chain != null) {
+                    for (ModelPart bone : chain) {
+                        bone.translateAndRotate(poseStack);
                     }
+                    return lid;
                 }
                 lid.translateAndRotate(poseStack);
                 return lid;
             }
         }
 
-        if (model instanceof HierarchicalModel<?> hierarchical
-                && (entity instanceof Slime || entity instanceof MagmaCube)) {
-            ModelPart root = hierarchical.root();
+        if (entity instanceof Slime || entity instanceof MagmaCube) {
+            ModelPart root = model.root();
             root.translateAndRotate(poseStack);
             return root;
         }
 
-        if (model instanceof HierarchicalModel<?> hierarchical
-                && entity.getType() == EntityType.SILVERFISH) {
-            ModelPart root = hierarchical.root();
-            Optional<ModelPart> head = hierarchical.getAnyDescendantWithName("segment0");
-            if (head.isPresent()) {
-                List<ModelPart> chain = buildChain(root, head.get());
+        if (entity.getType() == EntityTypes.SILVERFISH) {
+            ModelPart root = model.root();
+            ModelPart head = findDescendant(root, "segment0");
+            if (head != null) {
+                List<ModelPart> chain = buildChain(root, head);
                 if (chain != null) {
                     for (ModelPart bone : chain) {
                         bone.translateAndRotate(poseStack);
                     }
                 } else {
                     root.translateAndRotate(poseStack);
-                    head.get().translateAndRotate(poseStack);
+                    head.translateAndRotate(poseStack);
                 }
-                return head.get();
+                return head;
             }
         }
 
         if (model instanceof HeadedModel headed) {
             ModelPart head = headed.getHead();
-            if (model instanceof HierarchicalModel<?> hierarchical) {
-                List<ModelPart> chain = buildChain(hierarchical.root(), head);
-                if (chain != null && chain.size() > 1) {
-                    for (ModelPart bone : chain) {
-                        bone.translateAndRotate(poseStack);
-                    }
-                    return head;
+            List<ModelPart> chain = buildChain(model.root(), head);
+            if (chain != null && chain.size() > 1) {
+                for (ModelPart bone : chain) {
+                    bone.translateAndRotate(poseStack);
                 }
+                return head;
             }
             head.translateAndRotate(poseStack);
             return head;
         }
 
-        if (model instanceof HierarchicalModel<?> hierarchical) {
-            ModelPart root = hierarchical.root();
+        {
+            ModelPart root = model.root();
             ModelPart target = null;
             for (String name : HEAD_PART_NAMES) {
-                Optional<ModelPart> found = hierarchical.getAnyDescendantWithName(name);
-                if (found.isPresent()) {
-                    target = found.get();
+                ModelPart found = findDescendant(root, name);
+                if (found != null) {
+                    target = found;
                     break;
                 }
             }
@@ -1036,8 +1141,8 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             }
         }
 
-        if (model instanceof AgeableListModelAccessor ageable) {
-            ModelPart head = firstPart(ageable.hats$headParts());
+        if (model instanceof HeadedModel headedFallback) {
+            ModelPart head = headedFallback.getHead();
             if (head != null) {
                 head.translateAndRotate(poseStack);
                 return head;
@@ -1128,7 +1233,7 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
      * Axolotl / bee nest the head under the body, so babies use the body scale path.
      * Rabbits are handled earlier: their scale is inside {@code RabbitModel.renderToBuffer}.
      */
-    private void applyMobModelScale(PoseStack poseStack, EntityModel<T> model, T entity) {
+    private void applyMobModelScale(PoseStack poseStack, EntityModel<?> model, LivingEntity entity) {
         if (usesBodyBabyScale(entity)) {
             applyBabyBodyTransforms(poseStack, model, entity);
             return;
@@ -1138,20 +1243,20 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
 
     private static boolean usesBodyBabyScale(LivingEntity entity) {
         EntityType<?> type = entity.getType();
-        return type == EntityType.AXOLOTL || type == EntityType.BEE;
+        return type == EntityTypes.AXOLOTL || type == EntityTypes.BEE;
     }
 
-    private void applyBabyHeadTransforms(PoseStack poseStack, EntityModel<T> model, T entity) {
-        if (!entity.isBaby() && !model.young) {
+    private void applyBabyHeadTransforms(PoseStack poseStack, EntityModel<?> model, LivingEntity entity) {
+        if (!entity.isBaby()) {
             return;
         }
 
-        if (model instanceof AgeableHierarchicalModel<?>) {
+        if (YOUNG_SCALE_FACTOR_FIELD != null && YOUNG_SCALE_FACTOR_FIELD.getDeclaringClass().isInstance(model)) {
             applyAgeableHierarchicalBabyTransforms(poseStack, model);
             return;
         }
 
-        if (!(model instanceof AgeableListModel<?>)) {
+        if (SCALE_HEAD_FIELD == null || !SCALE_HEAD_FIELD.getDeclaringClass().isInstance(model)) {
             return;
         }
 
@@ -1166,11 +1271,11 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
         );
     }
 
-    private void applyBabyBodyTransforms(PoseStack poseStack, EntityModel<T> model, T entity) {
-        if (!entity.isBaby() && !model.young) {
+    private void applyBabyBodyTransforms(PoseStack poseStack, EntityModel<?> model, LivingEntity entity) {
+        if (!entity.isBaby()) {
             return;
         }
-        if (!(model instanceof AgeableListModel<?>)) {
+        if (BABY_BODY_SCALE_FIELD == null || !BABY_BODY_SCALE_FIELD.getDeclaringClass().isInstance(model)) {
             return;
         }
         float bodyScale = readFloat(model, BABY_BODY_SCALE_FIELD, 1.0F);
@@ -1181,7 +1286,7 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
         poseStack.translate(0.0F, readFloat(model, LIST_BODY_Y_OFFSET_FIELD, 0.0F) / 16.0F, 0.0F);
     }
 
-    private void applyAgeableHierarchicalBabyTransforms(PoseStack poseStack, EntityModel<T> model) {
+    private void applyAgeableHierarchicalBabyTransforms(PoseStack poseStack, EntityModel<?> model) {
         float scale = readFloat(model, YOUNG_SCALE_FACTOR_FIELD, 1.0F);
         float yOff = readFloat(model, HIER_BODY_Y_OFFSET_FIELD, 0.0F);
         if (scale != 0.0F && scale != 1.0F) {
@@ -1207,14 +1312,14 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
     static {
         CUBES_FIELD = findTypedField(ModelPart.class, List.class, "cubes", "f_104212_");
         CHILDREN_FIELD = findTypedField(ModelPart.class, Map.class, "children", "f_104213_");
-        SCALE_HEAD_FIELD = findField(AgeableListModel.class, "scaleHead", "f_102007_");
-        BABY_Y_HEAD_OFFSET_FIELD = findField(AgeableListModel.class, "babyYHeadOffset", "f_170338_");
-        BABY_Z_HEAD_OFFSET_FIELD = findField(AgeableListModel.class, "babyZHeadOffset", "f_170339_");
-        BABY_HEAD_SCALE_FIELD = findField(AgeableListModel.class, "babyHeadScale", "f_102010_");
-        BABY_BODY_SCALE_FIELD = findField(AgeableListModel.class, "babyBodyScale", "f_102011_");
-        LIST_BODY_Y_OFFSET_FIELD = findField(AgeableListModel.class, "bodyYOffset", "f_102012_");
-        YOUNG_SCALE_FACTOR_FIELD = findField(AgeableHierarchicalModel.class, "youngScaleFactor", "f_271539_");
-        HIER_BODY_Y_OFFSET_FIELD = findField(AgeableHierarchicalModel.class, "bodyYOffset", "f_271124_");
+        SCALE_HEAD_FIELD = findField(BabyModelTransform.class, "scaleHead", "f_102007_");
+        BABY_Y_HEAD_OFFSET_FIELD = findField(BabyModelTransform.class, "babyYHeadOffset", "f_170338_");
+        BABY_Z_HEAD_OFFSET_FIELD = findField(BabyModelTransform.class, "babyZHeadOffset", "f_170339_");
+        BABY_HEAD_SCALE_FIELD = findField(BabyModelTransform.class, "babyHeadScale", "f_102010_");
+        BABY_BODY_SCALE_FIELD = findField(BabyModelTransform.class, "babyBodyScale", "f_102011_");
+        LIST_BODY_Y_OFFSET_FIELD = findField(BabyModelTransform.class, "bodyYOffset", "f_102012_");
+        YOUNG_SCALE_FACTOR_FIELD = findField(BabyModelTransform.class, "youngScaleFactor", "f_271539_");
+        HIER_BODY_Y_OFFSET_FIELD = findField(BabyModelTransform.class, "bodyYOffset", "f_271124_");
         LAYERS_FIELD = findTypedField(LivingEntityRenderer.class, List.class, "layers", "f_115291_");
     }
 
@@ -1278,7 +1383,7 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
     }
 
     @SuppressWarnings("unchecked")
-    private static List<Object> layersOf(LivingEntityRenderer<?, ?> renderer) {
+    private static List<Object> layersOf(LivingEntityRenderer<?, ?, ?> renderer) {
         if (LAYERS_FIELD == null) {
             return List.of();
         }
@@ -1290,6 +1395,22 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
         } catch (IllegalAccessException ignored) {
         }
         return List.of();
+    }
+
+    private static Object namedEntityModelField(Object layer, String name) {
+        Class<?> search = layer.getClass();
+        while (search != null && search != Object.class) {
+            try {
+                Field field = search.getDeclaredField(name);
+                if (EntityModel.class.isAssignableFrom(field.getType())) {
+                    field.setAccessible(true);
+                    return field.get(layer);
+                }
+            } catch (ReflectiveOperationException ignored) {
+            }
+            search = search.getSuperclass();
+        }
+        return null;
     }
 
     private static Object firstEntityModelField(Object layer) {
@@ -1465,21 +1586,17 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
      * production remapping. Java field names do not.
      */
     private static ModelPart findBone(EntityModel<?> model, String name) {
-        if (model instanceof HierarchicalModel<?> hierarchical) {
-            Optional<ModelPart> found = hierarchical.getAnyDescendantWithName(name);
-            if (found.isPresent()) {
-                return found.get();
-            }
+        ModelPart found = findDescendant(model.root(), name);
+        if (found != null) {
+            return found;
         }
         return findNamedPart(model, name);
     }
 
     private static ModelPart findHorseBody(EntityModel<?> model) {
-        if (model instanceof HierarchicalModel<?> hierarchical) {
-            Optional<ModelPart> found = hierarchical.getAnyDescendantWithName("body");
-            if (found.isPresent()) {
-                return found.get();
-            }
+        ModelPart found = findDescendant(model.root(), "body");
+        if (found != null) {
+            return found;
         }
 
         ModelPart named = findNamedPart(model, "body");
@@ -1487,14 +1604,12 @@ public class HatRenderLayer<T extends LivingEntity, M extends EntityModel<T>>
             return named;
         }
 
-        if (model instanceof AgeableListModelAccessor ageable) {
-            try {
-                ModelPart body = firstPart(ageable.hats$bodyParts());
-                if (body != null) {
-                    return body;
-                }
-            } catch (Throwable ignored) {
+        try {
+            ModelPart root = model.root();
+            if (root != null && root.hasChild("body")) {
+                return root.getChild("body");
             }
+        } catch (Throwable ignored) {
         }
 
         return largestModelPartField(model);

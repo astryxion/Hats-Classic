@@ -1,11 +1,11 @@
 package com.astryxion.hats.mixin;
 
+import com.astryxion.hats.client.render.HatRenderLayer;
 import com.astryxion.hats.common.hat.HatManager;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.model.EntityModel;
-import net.minecraft.client.model.HeadedModel;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.layers.CustomHeadLayer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,23 +20,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * placement.
  */
 @Mixin(CustomHeadLayer.class)
-public class CustomHeadLayerMixin<T extends LivingEntity, M extends EntityModel<T> & HeadedModel> {
+public class CustomHeadLayerMixin {
 
-    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "submit", at = @At("HEAD"), cancellable = true)
     private void hats$skipModHats(
             PoseStack poseStack,
-            MultiBufferSource buffer,
+            SubmitNodeCollector collector,
             int packedLight,
-            T entity,
-            float limbSwing,
-            float limbSwingAmount,
-            float partialTicks,
-            float ageInTicks,
-            float netHeadYaw,
-            float headPitch,
+            LivingEntityRenderState state,
+            float yRot,
+            float xRot,
             CallbackInfo ci
     ) {
-        if (HatManager.isModHat(entity.getItemBySlot(EquipmentSlot.HEAD))) {
+        LivingEntity entity = state.getRenderData(HatRenderLayer.HAT_ENTITY);
+        if (entity != null && HatManager.isModHat(entity.getItemBySlot(EquipmentSlot.HEAD))) {
             ci.cancel();
         }
     }

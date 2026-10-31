@@ -1,27 +1,33 @@
 package com.astryxion.hats.common.network.trade;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import com.astryxion.hats.common.network.HatPacketHandler;
-
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketTradeResolved {
+public class PacketTradeResolved implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketTradeResolved> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "trade_resolved"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketTradeResolved> STREAM_CODEC =
+            StreamCodec.of(PacketTradeResolved::encode, PacketTradeResolved::decode);
 
     private final UUID offerId;
     private final boolean accepted;
     private final String otherName;
-    private final List<ResourceLocation> unlocked;
-    private final List<ResourceLocation> gained;
-    private final List<ResourceLocation> lost;
+    private final List<Identifier> unlocked;
+    private final List<Identifier> gained;
+    private final List<Identifier> lost;
     @Nullable
-    private final ResourceLocation equipped;
+    private final Identifier equipped;
 
     public PacketTradeResolved(UUID offerId, boolean accepted, String otherName) {
         this(offerId, accepted, otherName, List.of(), List.of(), List.of(), null);
@@ -31,10 +37,10 @@ public class PacketTradeResolved {
             UUID offerId,
             boolean accepted,
             String otherName,
-            List<ResourceLocation> unlocked,
-            List<ResourceLocation> gained,
-            List<ResourceLocation> lost,
-            @Nullable ResourceLocation equipped
+            List<Identifier> unlocked,
+            List<Identifier> gained,
+            List<Identifier> lost,
+            @Nullable Identifier equipped
     ) {
         this.offerId = offerId;
         this.accepted = accepted;
@@ -43,6 +49,11 @@ public class PacketTradeResolved {
         this.gained = List.copyOf(gained);
         this.lost = List.copyOf(lost);
         this.equipped = equipped;
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
     public UUID offerId() {
@@ -57,24 +68,24 @@ public class PacketTradeResolved {
         return otherName;
     }
 
-    public List<ResourceLocation> unlocked() {
+    public List<Identifier> unlocked() {
         return unlocked;
     }
 
-    public List<ResourceLocation> gained() {
+    public List<Identifier> gained() {
         return gained;
     }
 
-    public List<ResourceLocation> lost() {
+    public List<Identifier> lost() {
         return lost;
     }
 
     @Nullable
-    public ResourceLocation equipped() {
+    public Identifier equipped() {
         return equipped;
     }
 
-    public static void encode(PacketTradeResolved msg, FriendlyByteBuf buf) {
+    public static void encode(RegistryFriendlyByteBuf buf, PacketTradeResolved msg) {
         buf.writeUUID(msg.offerId);
         buf.writeBoolean(msg.accepted);
         buf.writeUtf(msg.otherName);
@@ -85,12 +96,12 @@ public class PacketTradeResolved {
             TradePacketBuffers.writeIds(buf, msg.lost);
             buf.writeBoolean(msg.equipped != null);
             if (msg.equipped != null) {
-                buf.writeResourceLocation(msg.equipped);
+                buf.writeIdentifier(msg.equipped);
             }
         }
     }
 
-    public static PacketTradeResolved decode(FriendlyByteBuf buf) {
+    public static PacketTradeResolved decode(RegistryFriendlyByteBuf buf) {
         UUID offerId = buf.readUUID();
         boolean accepted = buf.readBoolean();
         String otherName = buf.readUtf();
@@ -98,19 +109,19 @@ public class PacketTradeResolved {
         if (!hasInventory) {
             return new PacketTradeResolved(offerId, accepted, otherName);
         }
-        List<ResourceLocation> unlocked = TradePacketBuffers.readIds(buf);
-        List<ResourceLocation> gained = TradePacketBuffers.readIds(buf);
-        List<ResourceLocation> lost = TradePacketBuffers.readIds(buf);
-        ResourceLocation equipped = buf.readBoolean() ? buf.readResourceLocation() : null;
+        List<Identifier> unlocked = TradePacketBuffers.readIds(buf);
+        List<Identifier> gained = TradePacketBuffers.readIds(buf);
+        List<Identifier> lost = TradePacketBuffers.readIds(buf);
+        Identifier equipped = buf.readBoolean() ? buf.readIdentifier() : null;
         return new PacketTradeResolved(offerId, accepted, otherName, unlocked, gained, lost, equipped);
     }
 
-    public static void handle(PacketTradeResolved msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
-                "com.astryxion.hats.client.trade.ClientTradePackets",
-                "onResolved",
-                new Class<?>[]{PacketTradeResolved.class},
-                new Object[]{msg}));
-        ctx.get().setPacketHandled(true);
+    public static void handle(PacketTradeResolved msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (net.neoforged.fml.loading.FMLEnvironment.getDist() != Dist.CLIENT) {
+                return;
+            }
+            com.astryxion.hats.client.trade.ClientTradePackets.onResolved(msg);
+        });
     }
 }

@@ -1,23 +1,34 @@
 package com.astryxion.hats.common.network;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.function.Supplier;
+public record PacketOpenHatStand(int entityId) implements CustomPacketPayload {
 
-public record PacketOpenHatStand(int entityId) {
+    public static final CustomPacketPayload.Type<PacketOpenHatStand> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "open_hat_stand"));
 
-    public static void encode(PacketOpenHatStand message, FriendlyByteBuf buffer) {
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketOpenHatStand> STREAM_CODEC =
+            StreamCodec.of(PacketOpenHatStand::encode, PacketOpenHatStand::decode);
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buffer, PacketOpenHatStand message) {
         buffer.writeVarInt(message.entityId);
     }
 
-    public static PacketOpenHatStand decode(FriendlyByteBuf buffer) {
+    public static PacketOpenHatStand decode(RegistryFriendlyByteBuf buffer) {
         return new PacketOpenHatStand(buffer.readVarInt());
     }
 
-    public static void handle(PacketOpenHatStand message, Supplier<NetworkEvent.Context> supplier) {
-        NetworkEvent.Context context = supplier.get();
-        context.enqueueWork(() -> {
+    public static void handle(PacketOpenHatStand message, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             try {
                 Class.forName("com.astryxion.hats.client.gui.HatStandGui")
                         .getMethod("open", int.class)
@@ -25,6 +36,5 @@ public record PacketOpenHatStand(int entityId) {
             } catch (ReflectiveOperationException ignored) {
             }
         });
-        context.setPacketHandled(true);
     }
 }

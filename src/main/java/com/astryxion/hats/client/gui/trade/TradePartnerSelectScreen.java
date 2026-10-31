@@ -7,9 +7,10 @@ import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.trade.PacketNearbyPlayersList;
 import com.astryxion.hats.common.network.trade.PacketRequestNearbyPlayers;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -54,26 +55,25 @@ public class TradePartnerSelectScreen extends Screen {
 
     private void requestRefresh() {
         ClientTradeState.clearNearby();
-        HatPacketHandler.CHANNEL.sendToServer(new PacketRequestNearbyPlayers());
+        HatPacketHandler.sendToServer(new PacketRequestNearbyPlayers());
         lastRefreshMs = System.currentTimeMillis();
     }
 
     @Override
     public void tick() {
         if (System.currentTimeMillis() - lastRefreshMs >= AUTO_REFRESH_INTERVAL_MS) {
-            HatPacketHandler.CHANNEL.sendToServer(new PacketRequestNearbyPlayers());
+            HatPacketHandler.sendToServer(new PacketRequestNearbyPlayers());
             lastRefreshMs = System.currentTimeMillis();
         }
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(panelX - 1, panelY - 1, panelX + PANEL_W + 1, panelY + PANEL_H + 1, 0xFF555555);
         graphics.fill(panelX, panelY, panelX + PANEL_W, panelY + PANEL_H, 0xFFC6C6C6);
         graphics.fill(panelX + 1, panelY + 1, panelX + PANEL_W - 1, panelY + 2, 0xFFFFFFFF);
         graphics.fill(panelX + 1, panelY + PANEL_H - 2, panelX + PANEL_W - 1, panelY + PANEL_H - 1, 0xFF555555);
-        graphics.drawString(font, title, panelX + (PANEL_W - font.width(title)) / 2, panelY + 8, 0xFF333333, false);
+        graphics.text(font, title, panelX + (PANEL_W - font.width(title)) / 2, panelY + 8, 0xFF333333, false);
 
         if (ClientTradeState.hasIncomingOffers()) {
             int headerY = listY - 14;
@@ -81,14 +81,14 @@ public class TradePartnerSelectScreen extends Screen {
             String text = Component.translatable("hats.trade.incomingClick", count).getString();
             boolean hovered = mouseX >= listX && mouseX < listX + listW && mouseY >= headerY && mouseY < headerY + 12;
             graphics.fill(listX, headerY, listX + listW, headerY + 12, hovered ? 0xFFFFC04D : 0xFFFFAA00);
-            graphics.drawString(font, text, listX + (listW - font.width(text)) / 2, headerY + 2, 0xFF222222, false);
+            graphics.text(font, text, listX + (listW - font.width(text)) / 2, headerY + 2, 0xFF222222, false);
         }
 
         if (!ClientTradeState.isNearbyReceived()) {
             int dots = (int) ((System.currentTimeMillis() / 400) % 4);
             String loading = Component.translatable("hats.trade.fetching").getString() + ".".repeat(dots);
-            graphics.drawString(font, loading, panelX + (PANEL_W - font.width(loading)) / 2, panelY + PANEL_H / 2 - 4, 0xFF333333, false);
-            super.render(graphics, mouseX, mouseY, partialTick);
+            graphics.text(font, loading, panelX + (PANEL_W - font.width(loading)) / 2, panelY + PANEL_H / 2 - 4, 0xFF333333, false);
+            super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             return;
         }
 
@@ -97,7 +97,7 @@ public class TradePartnerSelectScreen extends Screen {
         graphics.fill(listX, listY, listX + listW, listY + listH, 0xFF2B2B2B);
         if (nearby.isEmpty()) {
             String empty = Component.translatable("hats.trade.noPlayers").getString();
-            graphics.drawString(font, empty, panelX + (PANEL_W - font.width(empty)) / 2, listY + listH / 2 - 4, 0xFFAAAAAA, false);
+            graphics.text(font, empty, panelX + (PANEL_W - font.width(empty)) / 2, listY + listH / 2 - 4, 0xFFAAAAAA, false);
         } else {
             int visible = Math.min(LIST_VISIBLE_ROWS, nearby.size() - scroll);
             for (int i = 0; i < visible; i++) {
@@ -106,14 +106,17 @@ public class TradePartnerSelectScreen extends Screen {
                 if (hovered) {
                     graphics.fill(listX, rowY, listX + listW, rowY + ROW_H, 0xFF3D5A80);
                 }
-                graphics.drawString(font, nearby.get(scroll + i).name(), listX + 6, rowY + 4, 0xFFFFFFFF, false);
+                graphics.text(font, nearby.get(scroll + i).name(), listX + 6, rowY + 4, 0xFFFFFFFF, false);
             }
         }
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button == 0 && ClientTradeState.hasIncomingOffers()) {
             int headerY = listY - 14;
             if (mouseX >= listX && mouseX < listX + listW && mouseY >= headerY && mouseY < headerY + 12) {
@@ -134,17 +137,17 @@ public class TradePartnerSelectScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (mouseX >= listX && mouseX < listX + listW && mouseY >= listY && mouseY < listY + listH) {
             int max = Math.max(0, ClientTradeState.getNearby().size() - LIST_VISIBLE_ROWS);
-            scroll = Math.max(0, Math.min(max, scroll - (int) Math.signum(delta)));
+            scroll = Math.max(0, Math.min(max, scroll - (int) Math.signum(scrollY)));
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override

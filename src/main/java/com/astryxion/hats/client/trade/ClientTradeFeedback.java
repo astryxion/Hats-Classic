@@ -16,7 +16,7 @@ public final class ClientTradeFeedback {
         Component message = accepted
                 ? Component.translatable("hats.trade.accepted", otherName).withStyle(ChatFormatting.GREEN)
                 : Component.translatable("hats.trade.declined", otherName).withStyle(ChatFormatting.RED);
-        minecraft.player.displayClientMessage(message, true);
+        minecraft.player.sendOverlayMessage(message);
         if (accepted) {
             com.astryxion.hats.client.gui.HatsGui.open();
         }

@@ -3,7 +3,7 @@ package com.astryxion.hats.client.trade;
 import com.astryxion.hats.common.network.trade.PacketNearbyPlayersList;
 import com.astryxion.hats.common.trade.TradeErrorType;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -21,16 +21,16 @@ public final class ClientTradeState {
         public final UUID offerId;
         public final UUID senderUuid;
         public final String senderName;
-        public final List<ResourceLocation> senderHats;
-        public final List<ResourceLocation> receiverHats;
+        public final List<Identifier> senderHats;
+        public final List<Identifier> receiverHats;
         public final long createdAtClientMs;
 
         public IncomingOffer(
                 UUID offerId,
                 UUID senderUuid,
                 String senderName,
-                List<ResourceLocation> senderHats,
-                List<ResourceLocation> receiverHats,
+                List<Identifier> senderHats,
+                List<Identifier> receiverHats,
                 long createdAtClientMs
         ) {
             this.offerId = offerId;
@@ -44,8 +44,8 @@ public final class ClientTradeState {
 
     private static List<PacketNearbyPlayersList.Entry> nearby = new ArrayList<>();
     private static boolean nearbyReceived;
-    private static final Map<UUID, List<ResourceLocation>> peerInventories = new LinkedHashMap<>();
-    private static final Map<UUID, ResourceLocation> peerEquipped = new LinkedHashMap<>();
+    private static final Map<UUID, List<Identifier>> peerInventories = new LinkedHashMap<>();
+    private static final Map<UUID, Identifier> peerEquipped = new LinkedHashMap<>();
     private static final Map<UUID, IncomingOffer> incomingOffers = new LinkedHashMap<>();
     @Nullable
     private static PendingOutgoing pendingOutgoing;
@@ -76,7 +76,7 @@ public final class ClientTradeState {
         return nearbyReceived;
     }
 
-    public static void setPeerInventory(UUID owner, List<ResourceLocation> hats, @Nullable ResourceLocation equipped) {
+    public static void setPeerInventory(UUID owner, List<Identifier> hats, @Nullable Identifier equipped) {
         peerInventories.put(owner, List.copyOf(hats));
         if (equipped == null) {
             peerEquipped.remove(owner);
@@ -86,12 +86,12 @@ public final class ClientTradeState {
     }
 
     @Nullable
-    public static List<ResourceLocation> getPeerInventory(UUID owner) {
+    public static List<Identifier> getPeerInventory(UUID owner) {
         return peerInventories.get(owner);
     }
 
     @Nullable
-    public static ResourceLocation getPeerEquipped(UUID owner) {
+    public static Identifier getPeerEquipped(UUID owner) {
         return peerEquipped.get(owner);
     }
 
@@ -137,7 +137,7 @@ public final class ClientTradeState {
         return error;
     }
 
-    public static void setPendingOutgoing(Collection<ResourceLocation> lost, Collection<ResourceLocation> gained) {
+    public static void setPendingOutgoing(Collection<Identifier> lost, Collection<Identifier> gained) {
         pendingOutgoing = new PendingOutgoing(lost, gained);
     }
 
@@ -161,10 +161,10 @@ public final class ClientTradeState {
     }
 
     public static final class PendingOutgoing {
-        public final List<ResourceLocation> lost;
-        public final List<ResourceLocation> gained;
+        public final List<Identifier> lost;
+        public final List<Identifier> gained;
 
-        private PendingOutgoing(Collection<ResourceLocation> lost, Collection<ResourceLocation> gained) {
+        private PendingOutgoing(Collection<Identifier> lost, Collection<Identifier> gained) {
             this.lost = List.copyOf(lost);
             this.gained = List.copyOf(gained);
         }

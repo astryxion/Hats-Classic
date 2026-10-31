@@ -4,19 +4,43 @@ import com.astryxion.hats.Config;
 import com.astryxion.hats.common.hat.HatAdvancements;
 import com.astryxion.hats.common.hat.HatMode;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
-import java.util.function.Supplier;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public class PacketOpenHuntingMenu {
+public class PacketOpenHuntingMenu implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketOpenHuntingMenu> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "open_hunting_menu"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketOpenHuntingMenu> STREAM_CODEC =
+            StreamCodec.of(PacketOpenHuntingMenu::encode, PacketOpenHuntingMenu::decode);
+
     public PacketOpenHuntingMenu() {}
+
     public PacketOpenHuntingMenu(FriendlyByteBuf buffer) {}
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketOpenHuntingMenu msg) {
+        msg.toBytes(buf);
+    }
+
+    public static PacketOpenHuntingMenu decode(RegistryFriendlyByteBuf buf) {
+        return new PacketOpenHuntingMenu(buf);
+    }
+
     public void toBytes(FriendlyByteBuf buffer) {}
 
-    public boolean handle(Supplier<NetworkEvent.Context> supplier) {
-        NetworkEvent.Context ctx = supplier.get();
+    public static void handle(PacketOpenHuntingMenu msg, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            ServerPlayer player = ctx.getSender();
+            ServerPlayer player = (ServerPlayer) ctx.player();
             if (player != null
                     && !player.isCreative()
                     && !player.isSpectator()
@@ -24,7 +48,5 @@ public class PacketOpenHuntingMenu {
                 HatAdvancements.award(player, "hats/hunt_begin");
             }
         });
-        ctx.setPacketHandled(true);
-        return true;
     }
 }

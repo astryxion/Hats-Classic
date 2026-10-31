@@ -1,43 +1,28 @@
 package com.astryxion.hats.common.capability;
 
-import com.astryxion.hats.common.hat.PlayerHatData;
 import com.astryxion.hats.common.hat.PlayerHatDataImpl;
-import net.minecraft.core.Direction;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-import net.minecraftforge.common.capabilities.ICapabilitySerializable;
-import net.minecraftforge.common.util.LazyOptional;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
-public class HatDataProvider implements ICapabilityProvider, ICapabilitySerializable<CompoundTag> {
+/**
+ * Persists {@link PlayerHatDataImpl} with the same compound the packets and GUI already read.
+ */
+public class HatDataProvider implements IAttachmentSerializer<PlayerHatDataImpl> {
 
-    private final PlayerHatDataImpl data = new PlayerHatDataImpl();
-    private final LazyOptional<PlayerHatData> optional = LazyOptional.of(() -> data);
-
-    @Nonnull
     @Override
-    public <T> LazyOptional<T> getCapability(@Nonnull Capability<T> cap, @Nullable Direction side) {
-        if (cap == HatDataCapability.HAT_DATA) {
-            return optional.cast();
-        }
-        return LazyOptional.empty();
-    }
-
-    public PlayerHatDataImpl data() {
+    public PlayerHatDataImpl read(IAttachmentHolder holder, ValueInput input) {
+        PlayerHatDataImpl data = new PlayerHatDataImpl();
+        input.read(MapCodec.assumeMapUnsafe(CompoundTag.CODEC)).ifPresent(data::deserializeNBT);
         return data;
     }
 
     @Override
-    public CompoundTag serializeNBT() {
-        // Delegate to the implementation we fixed earlier
-        return data.serializeNBT();
-    }
-
-    @Override
-    public void deserializeNBT(CompoundTag tag) {
-        // Delegate to the implementation we fixed earlier
-        data.deserializeNBT(tag);
+    public boolean write(PlayerHatDataImpl data, ValueOutput output) {
+        output.store(data.serializeNBT());
+        return true;
     }
 }

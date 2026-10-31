@@ -3,9 +3,10 @@ package com.astryxion.hats.client.render;
 import com.astryxion.hats.common.hat.HatManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.model.EntityModel;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -14,43 +15,29 @@ import net.minecraft.world.entity.LivingEntity;
  * second copy. We still use that slot as a courier, so wrap
  * {@code CustomHeadLayer} and skip our items.
  */
-public class SkipModHatHeadLayer<T extends LivingEntity, M extends EntityModel<T>>
-        extends RenderLayer<T, M> {
+public class SkipModHatHeadLayer<S extends LivingEntityRenderState, M extends EntityModel<? super S>>
+        extends RenderLayer<S, M> {
 
-    private final RenderLayer<T, M> vanilla;
+    private final RenderLayer<S, M> vanilla;
 
-    public SkipModHatHeadLayer(RenderLayerParent<T, M> parent, RenderLayer<T, M> vanilla) {
+    public SkipModHatHeadLayer(RenderLayerParent<S, M> parent, RenderLayer<S, M> vanilla) {
         super(parent);
         this.vanilla = vanilla;
     }
 
     @Override
-    public void render(
+    public void submit(
             PoseStack poseStack,
-            MultiBufferSource buffer,
+            SubmitNodeCollector collector,
             int packedLight,
-            T entity,
-            float limbSwing,
-            float limbSwingAmount,
-            float partialTicks,
-            float ageInTicks,
-            float netHeadYaw,
-            float headPitch
+            S state,
+            float yRot,
+            float xRot
     ) {
-        if (HatManager.isModHat(entity.getItemBySlot(EquipmentSlot.HEAD))) {
+        LivingEntity entity = state.getRenderData(HatRenderLayer.HAT_ENTITY);
+        if (entity != null && HatManager.isModHat(entity.getItemBySlot(EquipmentSlot.HEAD))) {
             return;
         }
-        vanilla.render(
-                poseStack,
-                buffer,
-                packedLight,
-                entity,
-                limbSwing,
-                limbSwingAmount,
-                partialTicks,
-                ageInTicks,
-                netHeadYaw,
-                headPitch
-        );
+        vanilla.submit(poseStack, collector, packedLight, state, yRot, xRot);
     }
 }

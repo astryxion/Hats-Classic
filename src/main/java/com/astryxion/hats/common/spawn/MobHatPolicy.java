@@ -4,12 +4,13 @@ import com.astryxion.hats.Config;
 import com.astryxion.hats.common.hat.HatManager;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 /**
  * When a mob type is config-disabled (per-mob toggle or Boss Mobs off), its
@@ -62,7 +63,7 @@ public final class MobHatPolicy {
         if (data.contains(STASH_KEY) || !data.contains(LEGACY_BOSS_STASH_KEY)) {
             return;
         }
-        data.put(STASH_KEY, data.getCompound(LEGACY_BOSS_STASH_KEY));
+        data.getCompound(LEGACY_BOSS_STASH_KEY).ifPresent(legacy -> data.put(STASH_KEY, legacy));
         data.remove(LEGACY_BOSS_STASH_KEY);
     }
 
@@ -74,7 +75,7 @@ public final class MobHatPolicy {
         if (hat.isEmpty()) {
             return;
         }
-        data.put(STASH_KEY, hat.save(new CompoundTag()));
+        ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, hat).result().ifPresent(saved -> data.put(STASH_KEY, saved));
         HatManager.clearHat(entity);
     }
 
@@ -82,7 +83,7 @@ public final class MobHatPolicy {
         if (!data.contains(STASH_KEY)) {
             return;
         }
-        ItemStack stashed = ItemStack.of(data.getCompound(STASH_KEY));
+        ItemStack stashed = ItemStack.CODEC.parse(NbtOps.INSTANCE, data.getCompoundOrEmpty(STASH_KEY)).result().orElse(ItemStack.EMPTY);
         data.remove(STASH_KEY);
         if (stashed.isEmpty() || HatManager.hasHat(entity)) {
             return;

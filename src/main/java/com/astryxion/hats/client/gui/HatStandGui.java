@@ -19,6 +19,6 @@ public final class HatStandGui {
 
     public static void open(int entityId) {
         ModernGuiCamera.resetOrbit();
-        Minecraft.getInstance().setScreen(create(entityId));
+        Minecraft.getInstance().gui.setScreen(create(entityId));
     }
 }

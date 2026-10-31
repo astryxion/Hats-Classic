@@ -92,13 +92,20 @@ public final class TabulaHatDefinition {
             return;
         }
         try {
-            var path = TabulaHats.resolve(relativePath);
-            if (path == null) {
-                loadFailed = true;
-                return;
+            try (var in = TabulaHats.open(relativePath)) {
+                if (in == null) {
+                    loadFailed = true;
+                    return;
+                }
+                modelData = TabulaTblReader.readModel(in);
             }
-            modelData = TabulaTblReader.readModel(path);
-            textureBytes = TabulaTblReader.readTexture(path);
+            try (var in = TabulaHats.open(relativePath)) {
+                if (in == null) {
+                    loadFailed = true;
+                    return;
+                }
+                textureBytes = TabulaTblReader.readTexture(in);
+            }
         } catch (Exception e) {
             loadFailed = true;
             com.astryxion.hats.Hats.LOGGER.error("Failed to load tabula hat '{}'", relativePath, e);

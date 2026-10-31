@@ -548,6 +548,7 @@
 
   "key.hats.open_gui": "Open Hats Menu",
   "key.categories.hats": "Hats",
+  "key.category.hats.hats": "Hats",
 
   "commands.hats.unknownHat": "Unknown hat",
   "commands.hats.set.success": "Set hat on %s entit(ies)",
@@ -576,7 +577,7 @@
   "hats.config.guiStyle.legacy": "Legacy",
   "hats.config.guiStyle.modern": "Modern",
   "hats.config.showRarityColorsEverywhere": "Legacy Rarity Colors Everywhere",
-  "hats.config.showRarityColorsEverywhere.tooltip": "Color Legacy All Hats and Favorites names by rarity. Modern and rarity categories are always colored.",
+  "hats.config.showRarityColorsEverywhere.tooltip": "Color hat names by rarity outside the Modern GUI. When off, only the Modern GUI uses rarity colors.",
   "hats.gui.title": "Hats",
   "hats.gui.search": "Search",
   "hats.gui.equip": "Equip",

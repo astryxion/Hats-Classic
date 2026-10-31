@@ -1,25 +1,32 @@
 package com.astryxion.hats.common.network.trade;
 
-import com.astryxion.hats.common.network.HatPacketHandler;
-
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketPeerInventory {
+public class PacketPeerInventory implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketPeerInventory> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "peer_inventory"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketPeerInventory> STREAM_CODEC =
+            StreamCodec.of(PacketPeerInventory::encode, PacketPeerInventory::decode);
 
     private final UUID owner;
     @Nullable
-    private final ResourceLocation equipped;
-    private final List<ResourceLocation> hats;
+    private final Identifier equipped;
+    private final List<Identifier> hats;
 
-    public PacketPeerInventory(UUID owner, @Nullable ResourceLocation equipped, List<ResourceLocation> hats) {
+    public PacketPeerInventory(UUID owner, @Nullable Identifier equipped, List<Identifier> hats) {
         this.owner = owner;
         this.equipped = equipped;
         this.hats = List.copyOf(hats);
@@ -30,35 +37,39 @@ public class PacketPeerInventory {
     }
 
     @Nullable
-    public ResourceLocation equipped() {
+    public Identifier equipped() {
         return equipped;
     }
 
-    public List<ResourceLocation> hats() {
+    public List<Identifier> hats() {
         return hats;
     }
 
-    public static void encode(PacketPeerInventory msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketPeerInventory msg) {
         buf.writeUUID(msg.owner);
         buf.writeBoolean(msg.equipped != null);
         if (msg.equipped != null) {
-            buf.writeResourceLocation(msg.equipped);
+            buf.writeIdentifier(msg.equipped);
         }
         TradePacketBuffers.writeIds(buf, msg.hats);
     }
 
-    public static PacketPeerInventory decode(FriendlyByteBuf buf) {
+    public static PacketPeerInventory decode(RegistryFriendlyByteBuf buf) {
         UUID owner = buf.readUUID();
-        ResourceLocation equipped = buf.readBoolean() ? buf.readResourceLocation() : null;
+        Identifier equipped = buf.readBoolean() ? buf.readIdentifier() : null;
         return new PacketPeerInventory(owner, equipped, TradePacketBuffers.readIds(buf));
     }
 
-    public static void handle(PacketPeerInventory msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
-                "com.astryxion.hats.client.trade.ClientTradePackets",
-                "onPeerInventory",
-                new Class<?>[]{PacketPeerInventory.class},
-                new Object[]{msg}));
-        ctx.get().setPacketHandled(true);
+    public static void handle(PacketPeerInventory msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (FMLEnvironment.getDist() == Dist.CLIENT) {
+                com.astryxion.hats.client.trade.ClientTradePackets.onPeerInventory(msg);
+            }
+        });
     }
 }

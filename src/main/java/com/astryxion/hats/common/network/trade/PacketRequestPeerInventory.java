@@ -6,16 +6,23 @@ import com.astryxion.hats.common.trade.TradeErrorType;
 import com.astryxion.hats.common.trade.TradeHats;
 import com.astryxion.hats.common.trade.TradeOfferStore;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketRequestPeerInventory {
+public class PacketRequestPeerInventory implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketRequestPeerInventory> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "request_peer_inventory"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketRequestPeerInventory> STREAM_CODEC =
+            StreamCodec.of(PacketRequestPeerInventory::encode, PacketRequestPeerInventory::decode);
 
     private final UUID targetUuid;
 
@@ -23,22 +30,26 @@ public class PacketRequestPeerInventory {
         this.targetUuid = targetUuid;
     }
 
-    public static void encode(PacketRequestPeerInventory msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketRequestPeerInventory msg) {
         buf.writeUUID(msg.targetUuid);
     }
 
-    public static PacketRequestPeerInventory decode(FriendlyByteBuf buf) {
+    public static PacketRequestPeerInventory decode(RegistryFriendlyByteBuf buf) {
         return new PacketRequestPeerInventory(buf.readUUID());
     }
 
-    public static void handle(PacketRequestPeerInventory msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-        context.enqueueWork(() -> {
-            ServerPlayer sender = context.getSender();
-            if (sender == null || sender.getServer() == null) {
+    public static void handle(PacketRequestPeerInventory msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = (ServerPlayer) ctx.player();
+            if (sender == null || sender.level().getServer() == null) {
                 return;
             }
-            ServerPlayer target = sender.getServer().getPlayerList().getPlayer(msg.targetUuid);
+            ServerPlayer target = sender.level().getServer().getPlayerList().getPlayer(msg.targetUuid);
             if (target == null || target.level() != sender.level()) {
                 HatTradeNetwork.send(sender, new PacketTradeError(TradeErrorType.RECEIVER_OFFLINE, ""));
                 return;
@@ -49,11 +60,10 @@ public class PacketRequestPeerInventory {
             }
             TradeOfferStore.get().openSession(new TradeBuilderSession(
                     sender.getUUID(), msg.targetUuid, System.currentTimeMillis()));
-            List<ResourceLocation> hats = HatDataAccess.copyUnlocked(target);
+            List<Identifier> hats = HatDataAccess.copyUnlocked(target);
             hats = hats.stream().filter(TradeHats::isHat).toList();
-            ResourceLocation equipped = TradeHats.equippedId(target);
+            Identifier equipped = TradeHats.equippedId(target);
             HatTradeNetwork.send(sender, new PacketPeerInventory(msg.targetUuid, equipped, hats));
         });
-        context.setPacketHandled(true);
     }
 }

@@ -1,31 +1,18 @@
 package com.astryxion.hats.common.capability;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Player;
-
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraft.resources.Identifier;
 
 /**
- * Attaches hat data capability to players
+ * The player hat store is the {@code hat_data} attachment registered from {@link HatDataCapability}.
+ * This class stays so a second hat-data store is never attached.
  */
-@Mod.EventBusSubscriber(modid = Hats.MODID)
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatCapabilityEvents {
 
-    private static final ResourceLocation HAT_DATA_ID =
-            new ResourceLocation(Hats.MODID, "hat_data");
-
-    @SubscribeEvent
-    public static void onAttachCapabilities(AttachCapabilitiesEvent<?> event) {
-
-        if (!(event.getObject() instanceof Player player))
-            return;
-
-        HatDataProvider provider = new HatDataProvider();
-        HatDataAccess.register(player, provider.data());
-        event.addCapability(HAT_DATA_ID, provider);
-    }
+    public static final Identifier HAT_DATA_ID =
+            Identifier.fromNamespaceAndPath(Hats.MODID, "hat_data");
 }

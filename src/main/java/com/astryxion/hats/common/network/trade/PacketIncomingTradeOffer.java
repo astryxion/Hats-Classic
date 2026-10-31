@@ -2,16 +2,24 @@ package com.astryxion.hats.common.network.trade;
 
 import com.astryxion.hats.common.trade.TradeOffer;
 
-import com.astryxion.hats.common.network.HatPacketHandler;
-
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class PacketIncomingTradeOffer {
+public class PacketIncomingTradeOffer implements CustomPacketPayload {
+
+    public static final CustomPacketPayload.Type<PacketIncomingTradeOffer> TYPE =
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("hats", "incoming_trade_offer"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketIncomingTradeOffer> STREAM_CODEC =
+            StreamCodec.of(PacketIncomingTradeOffer::encode, PacketIncomingTradeOffer::decode);
 
     private final TradeOffer offer;
 
@@ -23,7 +31,12 @@ public class PacketIncomingTradeOffer {
         return offer;
     }
 
-    public static void encode(PacketIncomingTradeOffer msg, FriendlyByteBuf buf) {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void encode(RegistryFriendlyByteBuf buf, PacketIncomingTradeOffer msg) {
         TradeOffer offer = msg.offer;
         buf.writeUUID(offer.offerId);
         buf.writeUUID(offer.senderUuid);
@@ -35,25 +48,24 @@ public class PacketIncomingTradeOffer {
         buf.writeLong(offer.createdAtMs);
     }
 
-    public static PacketIncomingTradeOffer decode(FriendlyByteBuf buf) {
+    public static PacketIncomingTradeOffer decode(RegistryFriendlyByteBuf buf) {
         UUID offerId = buf.readUUID();
         UUID senderUuid = buf.readUUID();
         String senderName = buf.readUtf();
         UUID receiverUuid = buf.readUUID();
         String receiverName = buf.readUtf();
-        List<net.minecraft.resources.ResourceLocation> senderHats = TradePacketBuffers.readIds(buf);
-        List<net.minecraft.resources.ResourceLocation> receiverHats = TradePacketBuffers.readIds(buf);
+        List<net.minecraft.resources.Identifier> senderHats = TradePacketBuffers.readIds(buf);
+        List<net.minecraft.resources.Identifier> receiverHats = TradePacketBuffers.readIds(buf);
         long createdAt = buf.readLong();
         return new PacketIncomingTradeOffer(new TradeOffer(
                 offerId, senderUuid, senderName, receiverUuid, receiverName, senderHats, receiverHats, createdAt));
     }
 
-    public static void handle(PacketIncomingTradeOffer msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> HatPacketHandler.callClient(
-                "com.astryxion.hats.client.trade.ClientTradePackets",
-                "onIncomingOffer",
-                new Class<?>[]{PacketIncomingTradeOffer.class},
-                new Object[]{msg}));
-        ctx.get().setPacketHandled(true);
+    public static void handle(PacketIncomingTradeOffer msg, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (FMLEnvironment.getDist() == Dist.CLIENT) {
+                com.astryxion.hats.client.trade.ClientTradePackets.onIncomingOffer(msg);
+            }
+        });
     }
 }

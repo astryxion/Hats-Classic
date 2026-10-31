@@ -1,6 +1,7 @@
 package com.astryxion.hats.client.gui.widget;
 
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -33,7 +34,7 @@ public class HatsCycleButton<T> extends HatsButton {
     }
 
     @Override
-    public void onPress() {
+    public void onPress(InputWithModifiers input) {
         if (values.isEmpty()) {
             return;
         }

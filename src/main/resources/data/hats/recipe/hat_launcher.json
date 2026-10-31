@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " PG",
+    "PTM",
+    "HBB"
+  ],
+  "key": {
+    "P": "minecraft:glass_pane",
+    "G": "minecraft:glass",
+    "T": "minecraft:piston",
+    "M": "minecraft:magma_block",
+    "H": "minecraft:wither_skeleton_skull",
+    "B": "minecraft:polished_basalt"
+  },
+  "result": {
+    "id": "hats:hat_launcher"
+  }
+}

@@ -6,6 +6,10 @@ import com.astryxion.hats.common.network.PacketOpenHatStand;
 
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
@@ -16,10 +20,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
-import net.minecraftforge.network.PacketDistributor;
-
 public class HatStandEntity extends LivingEntity {
 
     public HatStandEntity(EntityType<? extends HatStandEntity> type, Level level) {
@@ -27,40 +27,33 @@ public class HatStandEntity extends LivingEntity {
         setNoGravity(true);
     }
 
-    public HatStandEntity(PlayMessages.SpawnEntity packet, Level level) {
-        this(HatStandRegistry.HAT_STAND_ENTITY.get(), level);
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-    }
-
-    @Override
-    public InteractionResult interact(Player player, InteractionHand hand) {
+    public InteractionResult interact(Player player, InteractionHand hand, net.minecraft.world.phys.Vec3 clickLocation) {
         if (hand != InteractionHand.MAIN_HAND) {
             return InteractionResult.PASS;
         }
         if (!level().isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-            HatPacketHandler.CHANNEL.send(
-                    PacketDistributor.PLAYER.with(() -> serverPlayer),
-                    new PacketOpenHatStand(getId())
-            );
+            HatPacketHandler.sendToPlayer(serverPlayer, new PacketOpenHatStand(getId()));
         }
-        return InteractionResult.sidedSuccess(level().isClientSide());
+        return level().isClientSide() ? InteractionResult.SUCCESS : InteractionResult.CONSUME;
     }
 
     @Override
-    public boolean hurt(DamageSource source, float amount) {
-        if (level().isClientSide() || isRemoved()) {
+    public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+        if (isRemoved()) {
             return true;
         }
         boolean creative = source.getEntity() instanceof Player player && player.getAbilities().instabuild;
         if (!creative) {
-            spawnAtLocation(HatStandRegistry.HAT_STAND_ITEM.get());
+            spawnAtLocation(level, HatStandRegistry.HAT_STAND_ITEM.get());
             ItemStack hat = HatManager.getHat(this).copy();
             if (!hat.isEmpty()) {
-                spawnAtLocation(hat);
+                spawnAtLocation(level, hat);
             }
         }
         discard();
@@ -83,7 +76,6 @@ public class HatStandEntity extends LivingEntity {
         return false;
     }
 
-    @Override
     public Iterable<ItemStack> getArmorSlots() {
         return java.util.List.of();
     }
@@ -103,8 +95,8 @@ public class HatStandEntity extends LivingEntity {
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    public Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity serverEntity) {
+        return new ClientboundAddEntityPacket(this, serverEntity);
     }
 
     @Override

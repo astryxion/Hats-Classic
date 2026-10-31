@@ -1,17 +1,21 @@
 package com.astryxion.hats.common.capability;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.hat.HatPart;
 import com.astryxion.hats.common.hat.HatPartCapability;
+import com.astryxion.hats.common.hat.PlayerHatData;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.PacketSyncHat;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = Hats.MODID)
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatCloneHandler {
 
     @SubscribeEvent
@@ -19,29 +23,13 @@ public class HatCloneHandler {
         Player original = event.getOriginal();
         Player clone = event.getEntity();
 
-        // 🔧 CRITICAL: Revive capabilities so we can actually read the old data during death
-        if (event.isWasDeath()) {
-            original.reviveCaps();
-        }
+        PlayerHatData oldData = original.getData(HatDataCapability.HAT_DATA);
+        PlayerHatData newData = clone.getData(HatDataCapability.HAT_DATA);
+        newData.copyFrom(oldData);
 
-        // 1. Move the Unlock Collection (Memory / GUI)
-        original.getCapability(HatDataCapability.HAT_DATA).ifPresent(oldData -> {
-            clone.getCapability(HatDataCapability.HAT_DATA).ifPresent(newData -> {
-                newData.copyFrom(oldData);
-            });
-        });
-
-        // 2. Move the Visual Hat (Equipped Slot)
-        original.getCapability(HatPartCapability.HAT_PART).ifPresent(oldPart -> {
-            clone.getCapability(HatPartCapability.HAT_PART).ifPresent(newPart -> {
-                newPart.setHatStack(oldPart.getHatStack());
-            });
-        });
-
-        // 🔧 Clean up to prevent memory leaks
-        if (event.isWasDeath()) {
-            original.invalidateCaps();
-        }
+        HatPart oldPart = original.getData(HatPartCapability.HAT_PART);
+        HatPart newPart = clone.getData(HatPartCapability.HAT_PART);
+        newPart.setHatStack(oldPart.getHatStack());
     }
 
     @SubscribeEvent
@@ -63,10 +51,9 @@ public class HatCloneHandler {
         HatPacketHandler.syncPlayerHatPartToTracking(player);
 
         // Sync GUI Unlocks (1 argument: NBT)
-        player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> {
-            HatPacketHandler.sendToPlayer(player, new PacketSyncHat(data.serializeNBT()));
-            com.astryxion.hats.common.network.PacketSetUnlockedHats.send(
-                    player, data.getUnlockedHats(), data.getEquippedHat());
-        });
+        PlayerHatData data = player.getData(HatDataCapability.HAT_DATA);
+        HatPacketHandler.sendToPlayer(player, new PacketSyncHat(data.serializeNBT()));
+        com.astryxion.hats.common.network.PacketSetUnlockedHats.send(
+                player, data.getUnlockedHats(), data.getEquippedHat());
     }
 }

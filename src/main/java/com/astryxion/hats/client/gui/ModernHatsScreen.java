@@ -17,11 +17,12 @@ import com.astryxion.hats.common.hat.HatRarity;
 import com.astryxion.hats.common.network.HatPacketHandler;
 import com.astryxion.hats.common.network.PacketUpdateHatStand;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
@@ -241,7 +242,7 @@ public class ModernHatsScreen extends Screen {
         addRenderableWidget(new HatsIconButton(
                 x, y + step * 5, SIDE_BTN_SIZE, SIDE_BTN_SIZE, HatsIcons.PERSONALISE,
                 Component.translatable("hats.gui.personalize"),
-                button -> minecraft.setScreen(new HatConfigScreen(this))));
+                button -> minecraft.gui.setScreen(new HatConfigScreen(this))));
 
         if (standEntityId < 0) {
             tradeButton = addRenderableWidget(new HatsIconButton(
@@ -304,7 +305,7 @@ public class ModernHatsScreen extends Screen {
         });
         hats.sort(Comparator
                 .comparing((Item item) -> !ClientFavourites.isFavourite(ModernHatGridWidget.hatId(item)))
-                .thenComparing(item -> item.getDescription().getString(), String.CASE_INSENSITIVE_ORDER));
+                .thenComparing(item -> Component.translatable(item.getDescriptionId()).getString(), String.CASE_INSENSITIVE_ORDER));
         return hats;
     }
 
@@ -369,7 +370,7 @@ public class ModernHatsScreen extends Screen {
             return;
         }
         if (standEntityId >= 0) {
-            HatPacketHandler.CHANNEL.sendToServer(new PacketUpdateHatStand(standEntityId, stagedHat.copy()));
+            HatPacketHandler.sendToServer(new PacketUpdateHatStand(standEntityId, stagedHat.copy()));
             HatManager.setHatStack(previewTarget(), stagedHat.copy());
         } else {
             HatEquipController.equipStack(minecraft.player, stagedHat);
@@ -383,7 +384,7 @@ public class ModernHatsScreen extends Screen {
             return;
         }
         if (standEntityId >= 0) {
-            HatPacketHandler.CHANNEL.sendToServer(new PacketUpdateHatStand(standEntityId, ItemStack.EMPTY));
+            HatPacketHandler.sendToServer(new PacketUpdateHatStand(standEntityId, ItemStack.EMPTY));
             HatManager.clearHat(previewTarget());
         } else {
             HatEquipController.unequip(minecraft.player);
@@ -459,7 +460,7 @@ public class ModernHatsScreen extends Screen {
     }
 
     private void updateButtons() {
-        boolean equipped = !stagedHat.isEmpty() && ItemStack.isSameItemSameTags(stagedHat, equippedHat);
+        boolean equipped = !stagedHat.isEmpty() && ItemStack.isSameItemSameComponents(stagedHat, equippedHat);
         if (equipButton != null) {
             equipButton.active = !stagedHat.isEmpty() && !equipped;
             equipButton.setMessage(Component.translatable(equipped ? "hats.gui.equipped" : "hats.gui.equip"));
@@ -496,9 +497,9 @@ public class ModernHatsScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         drawPanel(graphics, panelX(), panelY(), panelW(), panelH());
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         if (hatGrid != null) {
             hatGrid.render(graphics, mouseX, mouseY, partialTick);
         }
@@ -511,7 +512,7 @@ public class ModernHatsScreen extends Screen {
         }
     }
 
-    private void renderCategoryMenu(GuiGraphics graphics, int mouseX, int mouseY) {
+    private void renderCategoryMenu(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (categoryButton == null) {
             return;
         }
@@ -530,11 +531,11 @@ public class ModernHatsScreen extends Screen {
                 graphics.fill(menuX, itemY, menuX + CATEGORY_MENU_W, itemY + CATEGORY_ITEM_H, 0xFF3D5A80);
             }
             String label = rarity.name().charAt(0) + rarity.name().substring(1).toLowerCase();
-            graphics.drawString(font, label, menuX + CATEGORY_PAD, itemY + 2, rarity.getColor(), false);
+            graphics.text(font, label, menuX + CATEGORY_PAD, itemY + 2, rarity.getColor() | 0xFF000000, false);
         }
     }
 
-    private void drawPanel(GuiGraphics graphics, int x, int y, int width, int height) {
+    private void drawPanel(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
         graphics.fill(x, y, x + width, y + height, 0xFF8B8B8B);
         graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xFFC6C6C6);
         graphics.fill(x + 1, y + 1, x + width - 1, y + 2, 0xFFFFFFFF);
@@ -544,7 +545,10 @@ public class ModernHatsScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button == 0 && categoryMenuOpen && categoryButton != null) {
             int menuH = CATEGORY_PAD * 2 + HatRarity.values().length * CATEGORY_ITEM_H;
             int menuX = categoryButton.getX() - CATEGORY_MENU_W - 2;
@@ -561,24 +565,27 @@ public class ModernHatsScreen extends Screen {
             }
             categoryMenuOpen = false;
         }
-        if (hatGrid != null && hatGrid.mouseClicked(mouseX, mouseY, button)) {
+        if (hatGrid != null && hatGrid.mouseClicked(event, doubleClick)) {
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
         if (hatGrid != null) {
-            hatGrid.mouseReleased(mouseX, mouseY, button);
+            hatGrid.mouseReleased(event);
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button == 0 && isInPreviewArea(mouseX)) {
-            if (hasShiftDown()) {
+            if (minecraft.hasShiftDown()) {
                 ModernGuiCamera.guiPanX = Mth.clamp(ModernGuiCamera.guiPanX - (float) (dragX * 0.01), -2f, 2f);
                 ModernGuiCamera.guiPanY = Mth.clamp(ModernGuiCamera.guiPanY + (float) (dragY * 0.01), -2f, 2f);
             } else {
@@ -587,28 +594,35 @@ public class ModernHatsScreen extends Screen {
             }
             return true;
         }
-        if (hatGrid != null && hatGrid.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+        if (hatGrid != null && hatGrid.mouseDragged(event, dragX, dragY)) {
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (isInPreviewArea(mouseX)) {
             ModernGuiCamera.guiZoom = Mth.clamp(
-                    ModernGuiCamera.guiZoom + (float) (delta * 0.12), 0f, 1.5f);
+                    ModernGuiCamera.guiZoom + (float) (scrollY * 0.12), 0f, 1.5f);
             return true;
         }
         if (hatGrid != null && hatGrid.isMouseOver(mouseX, mouseY)) {
-            return hatGrid.mouseScrolled(mouseX, mouseY, delta);
+            return hatGrid.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        if (this.minecraft != null) {
+            this.minecraft.gui.hud.extractDeferredSubtitles();
+        }
     }
 
     private final class ColorSlider extends AbstractSliderButton {

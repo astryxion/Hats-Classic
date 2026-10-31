@@ -1,7 +1,7 @@
 package com.astryxion.hats.client.gui;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * Marquee for hat names that do not fit, matching the legacy chooser / Hats Renewed trade UI.
@@ -10,12 +10,12 @@ public final class HatNameScroller {
 
     private HatNameScroller() {}
 
-    public static void draw(GuiGraphics graphics, Font font, String name, int x, int y, int width, int color) {
+    public static void draw(GuiGraphicsExtractor graphics, Font font, String name, int x, int y, int width, int color) {
         draw(graphics, font, name, x, y, width, color, 0.7f);
     }
 
     public static void draw(
-            GuiGraphics graphics,
+            GuiGraphicsExtractor graphics,
             Font font,
             String name,
             int x,
@@ -51,12 +51,15 @@ public final class HatNameScroller {
         }
 
         int clipBottom = y + Math.max(1, (int) (font.lineHeight * scale) + 1);
+        if ((color & 0xFC000000) == 0) {
+            color |= 0xFF000000;
+        }
         graphics.enableScissor(x, y - 1, x + width, clipBottom);
-        graphics.pose().pushPose();
-        graphics.pose().translate(x + xOff, y, 0);
-        graphics.pose().scale(scale, scale, 1f);
-        graphics.drawString(font, name, 0, 0, color, false);
-        graphics.pose().popPose();
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x + xOff, y);
+        graphics.pose().scale(scale, scale);
+        graphics.text(font, name, 0, 0, color, false);
+        graphics.pose().popMatrix();
         graphics.disableScissor();
     }
 }

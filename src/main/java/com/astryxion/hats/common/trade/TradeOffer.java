@@ -1,6 +1,6 @@
 package com.astryxion.hats.common.trade;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +15,8 @@ public class TradeOffer {
     public final String senderName;
     public final UUID receiverUuid;
     public final String receiverName;
-    public final List<ResourceLocation> senderHats;
-    public final List<ResourceLocation> receiverHats;
+    public final List<Identifier> senderHats;
+    public final List<Identifier> receiverHats;
     public final long createdAtMs;
 
     public TradeOffer(
@@ -25,8 +25,8 @@ public class TradeOffer {
             String senderName,
             UUID receiverUuid,
             String receiverName,
-            List<ResourceLocation> senderHats,
-            List<ResourceLocation> receiverHats,
+            List<Identifier> senderHats,
+            List<Identifier> receiverHats,
             long createdAtMs
     ) {
         this.offerId = offerId;
@@ -47,7 +47,7 @@ public class TradeOffer {
         return Math.max(0L, EXPIRY_MS - (nowMs - createdAtMs));
     }
 
-    public static List<ResourceLocation> copyList(List<ResourceLocation> src) {
+    public static List<Identifier> copyList(List<Identifier> src) {
         return new ArrayList<>(src);
     }
 }

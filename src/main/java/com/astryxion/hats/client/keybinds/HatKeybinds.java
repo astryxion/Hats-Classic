@@ -1,17 +1,20 @@
 package com.astryxion.hats.client.keybinds;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.client.gui.HatsGui;
 import com.astryxion.hats.client.gui.modern.ModernGuiCamera;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -23,7 +26,7 @@ public class HatKeybinds {
     // MOD BUS -> register key
     // =========================
 
-    @Mod.EventBusSubscriber(modid = Hats.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = Hats.MODID, value = Dist.CLIENT)
     public static class Register {
 
         @SubscribeEvent
@@ -32,7 +35,7 @@ public class HatKeybinds {
             OPEN_HATS = new KeyMapping(
                     "key.hats.open_gui",
                     GLFW.GLFW_KEY_H,
-                    "key.categories.hats"
+                    KeyMapping.Category.register(Identifier.fromNamespaceAndPath(Hats.MODID, "hats"))
             );
 
             event.register(OPEN_HATS);
@@ -43,13 +46,11 @@ public class HatKeybinds {
     // FORGE BUS -> listen press
     // =========================
 
-    @Mod.EventBusSubscriber(modid = Hats.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = Hats.MODID, value = Dist.CLIENT)
     public static class Listener {
 
         @SubscribeEvent
-        public static void onClientTick(TickEvent.ClientTickEvent event) {
-
-            if (event.phase != TickEvent.Phase.END) return;
+        public static void onClientTick(ClientTickEvent.Post event) {
 
             ModernGuiCamera.tick();
 
@@ -61,7 +62,7 @@ public class HatKeybinds {
 
                 if (mc.player == null) return;
 
-                if (mc.screen == null) {
+                if (mc.gui.screen() == null) {
                     ModernGuiCamera.resetOrbit();
                     HatsGui.open();
                 }

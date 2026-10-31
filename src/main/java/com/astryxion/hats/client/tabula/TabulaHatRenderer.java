@@ -11,10 +11,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashSet;
@@ -24,7 +24,7 @@ public final class TabulaHatRenderer {
 
     private TabulaHatRenderer() {}
 
-    public static void render(PoseStack poseStack, MultiBufferSource buffers, int light, int overlay,
+    public static void render(PoseStack poseStack, SubmitNodeCollector collector, int light, int overlay,
             ItemStack stack, float scale) {
         TabulaHatDefinition def = TabulaHats.from(stack);
         if (def == null) {
@@ -44,13 +44,13 @@ public final class TabulaHatRenderer {
         if (scale != 1f) {
             poseStack.scale(scale, scale, scale);
         }
-        renderTree(poseStack, buffers, light, overlay, def, showing, rgba, foil);
+        renderTree(poseStack, collector, light, overlay, def, showing, rgba, foil);
         poseStack.popPose();
     }
 
     private static void renderTree(
             PoseStack poseStack,
-            MultiBufferSource buffers,
+            SubmitNodeCollector collector,
             int light,
             int overlay,
             TabulaHatDefinition def,
@@ -64,18 +64,18 @@ public final class TabulaHatRenderer {
                 hidden.addAll(accessory.hideParentParts);
             }
         }
-        renderModel(poseStack, buffers, light, overlay, def, rgba, hidden, foil);
+        renderModel(poseStack, collector, light, overlay, def, rgba, hidden, foil);
 
         for (TabulaHatDefinition accessory : def.accessories) {
             if (showing.contains(accessory.id)) {
-                renderTree(poseStack, buffers, light, overlay, accessory, showing, rgba, foil);
+                renderTree(poseStack, collector, light, overlay, accessory, showing, rgba, foil);
             }
         }
     }
 
     private static void renderModel(
             PoseStack poseStack,
-            MultiBufferSource buffers,
+            SubmitNodeCollector collector,
             int light,
             int overlay,
             TabulaHatDefinition def,
@@ -84,32 +84,24 @@ public final class TabulaHatRenderer {
             boolean foil
     ) {
         TabulaHatModelData model = def.modelData();
-        ResourceLocation texture = TabulaHatTextureManager.getTexture(def);
+        Identifier texture = TabulaHatTextureManager.getTexture(def);
         if (model == null || texture == null) {
             return;
         }
-
         boolean cull = def.cull != null && def.cull;
         RenderType renderType = cull
                 ? TabulaHatRenderTypes.hatTranslucentCull(texture)
                 : TabulaHatRenderTypes.hatTranslucent(texture);
-        VertexConsumer consumer = foil
-                ? ItemRenderer.getFoilBufferDirect(buffers, renderType, false, true)
-                : buffers.getBuffer(renderType);
-
-        for (TabulaHatModelData.Bone root : model.roots) {
-            renderBone(root, poseStack, consumer, light, overlay, rgba,
-                    model.textureWidth, model.textureHeight, hiddenParts);
-        }
+        submitBones(collector, poseStack, renderType, foil, model, hiddenParts, rgba, light, overlay);
     }
 
     public static void renderModelData(
             PoseStack poseStack,
-            MultiBufferSource buffers,
+            SubmitNodeCollector collector,
             int light,
             int overlay,
             TabulaHatModelData model,
-            ResourceLocation texture,
+            Identifier texture,
             Set<String> hiddenParts,
             boolean foil
     ) {
@@ -117,12 +109,42 @@ public final class TabulaHatRenderer {
             return;
         }
         float[] rgba = {1.0F, 1.0F, 1.0F, 1.0F};
-        VertexConsumer consumer = net.minecraft.client.renderer.entity.ItemRenderer.getFoilBufferDirect(
-                buffers, RenderType.entityTranslucentCull(texture), false, foil);
         Set<String> hidden = hiddenParts == null ? Set.of() : hiddenParts;
+        submitBones(collector, poseStack, TabulaHatRenderTypes.hatTranslucentCull(texture), foil, model, hidden, rgba, light, overlay);
+    }
+
+    private static void submitBones(
+            SubmitNodeCollector collector,
+            PoseStack poseStack,
+            RenderType renderType,
+            boolean foil,
+            TabulaHatModelData model,
+            Set<String> hidden,
+            float[] rgba,
+            int light,
+            int overlay
+    ) {
+        collector.submitCustomGeometry(poseStack, renderType, (pose, consumer) ->
+                drawRoots(pose, consumer, model, hidden, rgba, light, overlay));
+        if (foil) {
+            collector.submitCustomGeometry(poseStack, RenderTypes.entityGlint(), (pose, consumer) ->
+                    drawRoots(pose, consumer, model, hidden, rgba, light, overlay));
+        }
+    }
+
+    private static void drawRoots(
+            PoseStack.Pose pose,
+            VertexConsumer consumer,
+            TabulaHatModelData model,
+            Set<String> hidden,
+            float[] rgba,
+            int light,
+            int overlay
+    ) {
+        PoseStack local = new PoseStack();
+        local.last().set(pose);
         for (TabulaHatModelData.Bone root : model.roots) {
-            renderBone(root, poseStack, consumer, light, overlay, rgba,
-                    model.textureWidth, model.textureHeight, hidden);
+            renderBone(root, local, consumer, light, overlay, rgba, model.textureWidth, model.textureHeight, hidden);
         }
     }
 

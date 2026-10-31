@@ -1,5 +1,7 @@
 package com.astryxion.hats.client;
 
+import net.neoforged.fml.common.EventBusSubscriber;
+
 import com.astryxion.hats.Hats;
 import com.astryxion.hats.client.compat.FreshAnimationsHatCompat;
 import com.astryxion.hats.client.compat.SkinLayers3dHatCompat;
@@ -11,23 +13,26 @@ import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.layers.CustomHeadLayer;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
+import net.minecraft.world.entity.player.PlayerModelType;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 
 import java.lang.reflect.Field;
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = Hats.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Hats.MODID, value = Dist.CLIENT)
 public class ClientSetup {
 
     @SubscribeEvent
-    public static void registerReloadListeners(RegisterClientReloadListenersEvent event) {
-        event.registerReloadListener(
+    public static void registerReloadListeners(AddClientReloadListenersEvent event) {
+        event.addListener(
+                Identifier.fromNamespaceAndPath(Hats.MODID, "fresh_animations"),
                 (ResourceManagerReloadListener) FreshAnimationsHatCompat::onResourceManagerReload
         );
     }
@@ -35,8 +40,8 @@ public class ClientSetup {
     @SubscribeEvent
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static void addLayers(EntityRenderersEvent.AddLayers event) {
-        for (String skin : event.getSkins()) {
-            addIfMissing(event.getSkin(skin));
+        for (PlayerModelType skin : event.getSkins()) {
+            addIfMissing(event.getPlayerRenderer(skin));
         }
         Minecraft.getInstance()
                 .getEntityRenderDispatcher()
@@ -46,7 +51,7 @@ public class ClientSetup {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    static void addIfMissing(EntityRenderer<?> renderer) {
+    static void addIfMissing(EntityRenderer<?, ?> renderer) {
         if (!(renderer instanceof LivingEntityRenderer livingRenderer)) {
             return;
         }
@@ -58,7 +63,7 @@ public class ClientSetup {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void wrapCustomHeadLayer(LivingEntityRenderer renderer) {
+    private static void wrapCustomHeadLayer(LivingEntityRenderer<?, ?, ?> renderer) {
         List<?> layers = layersOf(renderer);
         for (int i = 0; i < layers.size(); i++) {
             Object layer = layers.get(i);
@@ -68,7 +73,7 @@ public class ClientSetup {
         }
     }
 
-    private static boolean alreadyHasHatLayer(LivingEntityRenderer<?, ?> renderer) {
+    private static boolean alreadyHasHatLayer(LivingEntityRenderer<?, ?, ?> renderer) {
         for (Object layer : layersOf(renderer)) {
             if (layer instanceof HatRenderLayer) {
                 return true;
@@ -77,7 +82,7 @@ public class ClientSetup {
         return false;
     }
 
-    private static void orderHatLayerAfterSkinLayersHead(LivingEntityRenderer<?, ?> renderer) {
+    private static void orderHatLayerAfterSkinLayersHead(LivingEntityRenderer<?, ?, ?> renderer) {
         List<?> layers = layersOf(renderer);
         for (Object layer : layers) {
             if (layer instanceof HatRenderLayer) {
@@ -87,7 +92,7 @@ public class ClientSetup {
         }
     }
 
-    private static List<?> layersOf(LivingEntityRenderer<?, ?> renderer) {
+    private static List<?> layersOf(LivingEntityRenderer<?, ?, ?> renderer) {
         for (String name : new String[]{"layers", "f_115291_"}) {
             try {
                 Field field = LivingEntityRenderer.class.getDeclaredField(name);

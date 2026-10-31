@@ -1,29 +1,32 @@
 package com.astryxion.hats.mixin;
 
-import net.minecraft.client.model.AgeableListModel;
-import net.minecraft.client.model.geom.ModelPart;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.gen.Accessor;
-import org.spongepowered.asm.mixin.gen.Invoker;
+import java.util.List;
 
-@Mixin(AgeableListModel.class)
+import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.model.HeadedModel;
+import net.minecraft.client.model.geom.ModelPart;
+
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+
+@Mixin(HeadedModel.class)
 public interface AgeableListModelAccessor {
 
-    @Invoker("headParts")
-    Iterable<ModelPart> hats$headParts();
+    @Unique
+    default Iterable<ModelPart> hats$headParts() {
+        ModelPart head = ((HeadedModel) (Object) this).getHead();
+        return head == null ? List.of() : List.of(head);
+    }
 
-    @Invoker("bodyParts")
-    Iterable<ModelPart> hats$bodyParts();
-
-    @Accessor("scaleHead")
-    boolean hats$getScaleHead();
-
-    @Accessor("babyYHeadOffset")
-    float hats$getBabyYHeadOffset();
-
-    @Accessor("babyZHeadOffset")
-    float hats$getBabyZHeadOffset();
-
-    @Accessor("babyHeadScale")
-    float hats$getBabyHeadScale();
+    @Unique
+    default Iterable<ModelPart> hats$bodyParts() {
+        if (!(this instanceof EntityModel<?> model)) {
+            return List.of();
+        }
+        ModelPart root = model.root();
+        if (root != null && root.hasChild("body")) {
+            return List.of(root.getChild("body"));
+        }
+        return List.of();
+    }
 }

@@ -6,7 +6,7 @@ import com.astryxion.hats.common.hat.PlayerHatDataImpl;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 
 import org.jetbrains.annotations.Nullable;
@@ -65,10 +65,18 @@ public final class HatDataAccess {
 
     @Nullable
     public static PlayerHatData get(Player player) {
-        return player == null ? null : player.getCapability(HatDataCapability.HAT_DATA).orElse(null);
+        if (player == null) {
+            return null;
+        }
+        PlayerHatData data = player.getData(HatDataCapability.HAT_DATA);
+        List<PlayerHatData> registered = INSTANCES.get(player);
+        if (registered == null || !registered.contains(data)) {
+            register(player, data);
+        }
+        return data;
     }
 
-    public static boolean has(Player player, ResourceLocation id) {
+    public static boolean has(Player player, Identifier id) {
         if (id == null) {
             return false;
         }
@@ -85,11 +93,11 @@ public final class HatDataAccess {
      * second copy still holding the old hat is why both traders ended up with
      * Dragon Skull.
      */
-    public static Set<ResourceLocation> snapshot(Player player) {
+    public static Set<Identifier> snapshot(Player player) {
         return snapshotOwning(player, List.of());
     }
 
-    public static Set<ResourceLocation> snapshotOwning(Player player, Collection<ResourceLocation> required) {
+    public static Set<Identifier> snapshotOwning(Player player, Collection<Identifier> required) {
         PlayerHatData match = null;
         if (required != null && !required.isEmpty()) {
             for (PlayerHatData data : all(player)) {
@@ -105,13 +113,13 @@ public final class HatDataAccess {
         return match == null ? new LinkedHashSet<>() : new LinkedHashSet<>(match.getUnlockedHats());
     }
 
-    public static CompoundTag nbtOf(Player player, Collection<ResourceLocation> unlocked, @Nullable ResourceLocation equipped) {
+    public static CompoundTag nbtOf(Player player, Collection<Identifier> unlocked, @Nullable Identifier equipped) {
         PlayerHatData current = get(player);
         CompoundTag nbt = current != null ? current.serializeNBT() : new PlayerHatDataImpl().serializeNBT();
         ListTag list = new ListTag();
-        for (ResourceLocation id : unlocked) {
+        for (Identifier id : unlocked) {
             if (id != null) {
-                list.add(StringTag.valueOf(id.toString()));
+                list.add(list.size(), StringTag.valueOf(id.toString()));
             }
         }
         nbt.put("UnlockedHats", list);
@@ -133,7 +141,7 @@ public final class HatDataAccess {
             return;
         }
         forEach(player, data -> data.deserializeNBT(hatNbt));
-        player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> data.deserializeNBT(hatNbt));
+        player.getData(HatDataCapability.HAT_DATA).deserializeNBT(hatNbt);
         if (player.level().isClientSide()) {
             return;
         }
@@ -143,7 +151,7 @@ public final class HatDataAccess {
             }
             CompoundTag caps = (CompoundTag) SERIALIZE_CAPS.invoke(player);
             if (caps != null && caps.contains("ForgeCaps")) {
-                CompoundTag forge = caps.getCompound("ForgeCaps");
+                CompoundTag forge = caps.getCompoundOrEmpty("ForgeCaps");
                 for (String key : CAP_KEYS) {
                     forge.put(key, hatNbt.copy());
                 }
@@ -152,20 +160,20 @@ public final class HatDataAccess {
         } catch (Throwable ignored) {
         }
         forEach(player, data -> data.deserializeNBT(hatNbt));
-        player.getCapability(HatDataCapability.HAT_DATA).ifPresent(data -> data.deserializeNBT(hatNbt));
+        player.getData(HatDataCapability.HAT_DATA).deserializeNBT(hatNbt);
     }
 
-    public static void replaceUnlocked(Player player, Collection<ResourceLocation> unlocked, @Nullable ResourceLocation equipped) {
+    public static void replaceUnlocked(Player player, Collection<Identifier> unlocked, @Nullable Identifier equipped) {
         if (player == null) {
             return;
         }
         PlayerHatData current = get(player);
         CompoundTag nbt = current != null ? current.serializeNBT() : new PlayerHatDataImpl().serializeNBT();
         ListTag list = new ListTag();
-        Set<ResourceLocation> unique = new LinkedHashSet<>(unlocked);
-        for (ResourceLocation id : unique) {
+        Set<Identifier> unique = new LinkedHashSet<>(unlocked);
+        for (Identifier id : unique) {
             if (id != null) {
-                list.add(StringTag.valueOf(id.toString()));
+                list.add(list.size(), StringTag.valueOf(id.toString()));
             }
         }
         nbt.put("UnlockedHats", list);
@@ -177,11 +185,11 @@ public final class HatDataAccess {
         apply(player, nbt);
     }
 
-    public static List<ResourceLocation> copyUnlocked(Player player) {
+    public static List<Identifier> copyUnlocked(Player player) {
         return List.copyOf(snapshot(player));
     }
 
-    public static List<ResourceLocation> copyUnlocked(PlayerHatData data) {
+    public static List<Identifier> copyUnlocked(PlayerHatData data) {
         return data == null ? List.of() : List.copyOf(data.getUnlockedHats());
     }
 
