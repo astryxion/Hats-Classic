@@ -1,4 +1,5 @@
 {
+	"render_type": "minecraft:translucent",
 	"display": {
 		"thirdperson_righthand": {
 			"rotation": [0, 135, 0],

@@ -1,4 +1,5 @@
 {
+	"render_type": "minecraft:translucent",
 	"credit": "Made with Blockbench",
 	"parent": "hats:item/hatparent",
 	"textures": {

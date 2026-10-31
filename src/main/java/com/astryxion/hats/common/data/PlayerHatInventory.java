@@ -1,6 +1,5 @@
 package com.astryxion.hats.common.data;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -9,9 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.storage.DimensionDataStorage;
 
 import java.util.*;
 
@@ -34,15 +31,12 @@ public class PlayerHatInventory extends SavedData {
     // Get instance
     // ============================
 
-    private static final SavedData.Factory<PlayerHatInventory> FACTORY = new SavedData.Factory<>(
-            PlayerHatInventory::new,
-            (tag, provider) -> tag.isEmpty() ? new PlayerHatInventory() : PlayerHatInventory.load(tag),
-            null
-    );
-
     public static PlayerHatInventory get(ServerLevel level) {
-        DimensionDataStorage storage = level.getDataStorage();
-        return storage.computeIfAbsent(FACTORY, DATA_NAME);
+
+        return level.getDataStorage().computeIfAbsent(
+                new SavedData.Factory<>(PlayerHatInventory::new, PlayerHatInventory::load),
+                DATA_NAME
+        );
     }
 
     // ============================
@@ -104,7 +98,7 @@ public class PlayerHatInventory extends SavedData {
     // ============================
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider provider) {
+    public CompoundTag save(CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
 
         ListTag playersList = new ListTag();
 
@@ -149,7 +143,7 @@ public class PlayerHatInventory extends SavedData {
     // Loading
     // ============================
 
-    public static PlayerHatInventory load(CompoundTag tag) {
+    public static PlayerHatInventory load(CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
 
         PlayerHatInventory data = new PlayerHatInventory();
 

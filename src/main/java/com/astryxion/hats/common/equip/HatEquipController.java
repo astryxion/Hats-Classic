@@ -1,28 +1,35 @@
 package com.astryxion.hats.common.equip;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.common.network.HatPacketHandler;
+import com.astryxion.hats.common.network.PacketEquipHat;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.registries.BuiltInRegistries;
 
+
+/**
+ * Handles all hat equip/unequip logic
+ * (GUI should ONLY call this class)
+ */
 public final class HatEquipController {
 
     private HatEquipController() {}
+
+    // ============================
+    // Equip
+    // ============================
 
     public static void equip(Player player, Item hat) {
 
         if (player == null || hat == null)
             return;
 
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(hat);
-
-        HatPacketHandler.sendEquipToServer(id.toString());
-
-        HatManager.setHatStack(player, new ItemStack(hat));
+        equipStack(player, new ItemStack(hat));
     }
 
     public static void equipStack(Player player, ItemStack stack) {
@@ -30,22 +37,35 @@ public final class HatEquipController {
         if (player == null || stack.isEmpty())
             return;
 
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (BuiltInRegistries.ITEM.getKey(stack.getItem()) == null)
+            return;
 
-        HatPacketHandler.sendEquipToServer(id.toString());
+        HatPacketHandler.sendToServer(
+                new PacketEquipHat(stack)
+        );
 
         HatManager.setHatStack(player, stack.copy());
     }
+
+    // ============================
+    // Unequip
+    // ============================
 
     public static void unequip(Player player) {
 
         if (player == null)
             return;
 
-        HatPacketHandler.sendEquipToServer("none");
+        HatPacketHandler.sendToServer(
+                new PacketEquipHat("none")
+        );
 
         HatManager.clearHat(player);
     }
+
+    // ============================
+    // Query
+    // ============================
 
     public static boolean hasHat(Player player) {
         return player != null && HatManager.hasHat(player);

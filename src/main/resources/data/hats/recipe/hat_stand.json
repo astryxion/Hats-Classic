@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " / ",
+    "/_/"
+  ],
+  "key": {
+    "/": {
+      "tag": "c:rods/wooden"
+    },
+    "_": {
+      "item": "minecraft:smooth_stone_slab"
+    }
+  },
+  "result": {
+    "id": "hats:hat_stand"
+  }
+}

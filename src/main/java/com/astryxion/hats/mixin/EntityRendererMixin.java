@@ -1,6 +1,7 @@
 package com.astryxion.hats.mixin;
 
-import com.astryxion.hats.client.gui.HatScreen;
+import com.astryxion.hats.client.gui.HatsGui;
+import com.astryxion.hats.client.render.ClientHatPreview;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,7 +14,7 @@ public abstract class EntityRendererMixin<T extends Entity> {
 
     @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void hats$hideNameForPreview(T entity, CallbackInfoReturnable<Boolean> cir) {
-        if (entity == HatScreen.getPreviewEntityForRendering()) {
+        if (ClientHatPreview.isRendering() || entity == HatsGui.getPreviewEntity()) {
             cir.setReturnValue(false);
         }
     }

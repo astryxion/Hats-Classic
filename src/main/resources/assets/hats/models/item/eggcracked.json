@@ -1,4 +1,5 @@
 {
+	"render_type": "minecraft:translucent",
 	"credit": "Made with Blockbench",
 	"parent": "hats:item/hatparent",
 	"textures": {
@@ -14,8 +15,8 @@
 				"east": {"uv": [8.508, 0.008, 10.992, 0.492], "texture": "#0", "tintindex": 0},
 				"south": {"uv": [8.508, 0.508, 10.992, 0.992], "texture": "#0", "tintindex": 0},
 				"west": {"uv": [8.508, 1.008, 10.992, 1.492], "texture": "#0", "tintindex": 0},
-				"up": {"uv": [8.492, 7.492, 6.008, 5.008], "texture": "#0"},
-				"down": {"uv": [5.492, 7.508, 3.008, 9.992], "texture": "#0"}
+				"up": {"uv": [8.492, 7.492, 6.008, 5.008], "texture": "#0", "tintindex": 0},
+				"down": {"uv": [5.492, 7.508, 3.008, 9.992], "texture": "#0", "tintindex": 0}
 			}
 		},
 		{

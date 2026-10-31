@@ -1,60 +1,88 @@
 package com.astryxion.hats.common.server;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+
+import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.capability.HatDataCapability;
+import com.astryxion.hats.common.hat.HatAdvancements;
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.common.network.HatPacketHandler;
-import com.astryxion.hats.common.capability.HatDataCapability;
+import com.astryxion.hats.common.network.PacketSyncHat;
 
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.registries.BuiltInRegistries;
 
+
+/**
+ * Server-side hat equip + sync handler
+ */
 public final class ServerHatHandler {
 
     private ServerHatHandler() {}
 
+    // =========================
+    // EQUIP HANDLER (FROM PACKET)
+    // =========================
+
     public static void handleEquip(ServerPlayer player, String hatId) {
+        ResourceLocation id = ResourceLocation.tryParse(hatId);
+        Item item = id != null && BuiltInRegistries.ITEM.containsKey(id) ? BuiltInRegistries.ITEM.get(id) : null;
+        handleEquip(player, item == null || "none".equals(hatId) ? ItemStack.EMPTY : new ItemStack(item));
+    }
+
+    public static void handleEquip(ServerPlayer player, ItemStack requestedHat) {
 
         if (player == null)
             return;
 
-        if (hatId.equals("none")) {
+        // =====================
+        // UNEQUIP
+        // =====================
+
+        if (requestedHat == null || requestedHat.isEmpty()) {
 
             HatManager.clearHat(player);
             HatPacketHandler.syncPlayerHatPartToTracking(player);
 
-            HatDataCapability.get(player).ifPresent(data -> {
-                data.setEquippedHat(null);
-                HatDataCapability.markDirty(player);
-                HatPacketHandler.sendSyncHatToPlayer(
-                        player,
-                        data.serializeNBT()
-                );
-            });
+            // 🔧 FIXED: Tell the capability memory we are wearing nothing
+            var data = player.getData(HatDataCapability.HAT_DATA);
+            data.setEquippedHat(null); // Clear the saved hat
+
+            HatPacketHandler.sendToPlayer(
+                    player,
+                    new PacketSyncHat(data.serializeNBT())
+            );
 
             return;
         }
 
-        ResourceLocation id = ResourceLocation.tryParse(hatId);
-        if (id == null)
+        // =====================
+        // EQUIP
+        // =====================
+
+        Item item = requestedHat.getItem();
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+        if (id == null || !Hats.MODID.equals(id.getNamespace()))
             return;
 
-        Item item = BuiltInRegistries.ITEM.get(id);
-        if (item == null || item == net.minecraft.world.item.Items.AIR)
-            return;
-
-        ItemStack stack = new ItemStack(item);
+        // Equip on server (Visual/Part layer)
+        ItemStack stack = requestedHat.copy();
+        stack.setCount(1);
         HatManager.setHatStack(player, stack);
         HatPacketHandler.syncPlayerHatPartToTracking(player);
+        HatAdvancements.onEquip(player, stack);
 
-        HatDataCapability.get(player).ifPresent(data -> {
-            data.setEquippedHat(id);
-            HatDataCapability.markDirty(player);
-            HatPacketHandler.sendSyncHatToPlayer(
-                    player,
-                    data.serializeNBT()
-            );
-        });
+        // 🔧 FIXED: Tell the capability memory exactly which hat we are wearing
+        var data = player.getData(HatDataCapability.HAT_DATA);
+        data.setEquippedHat(id); // Save the hat ID to capability memory
+
+        // Sync FULL capability data (This ensures the GUI stays in sync)
+        HatPacketHandler.sendToPlayer(
+                player,
+                new PacketSyncHat(data.serializeNBT())
+        );
     }
 }

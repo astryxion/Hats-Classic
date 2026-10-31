@@ -1,15 +1,21 @@
 package com.astryxion.hats.common.hat;
 
-import com.astryxion.hats.Hats;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
-/**
- * Kept for reference; NeoForge uses HatPartCapability storage instead.
- */
-public final class HatPartProvider {
+public class HatPartProvider implements IAttachmentSerializer<CompoundTag, HatPart> {
 
-    public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(Hats.MODID, "hat_part");
+    @Override
+    public HatPart read(IAttachmentHolder holder, CompoundTag tag, HolderLookup.Provider provider) {
+        HatPart part = new HatPart();
+        part.deserializeNBT(tag);
+        return part;
+    }
 
-    private HatPartProvider() {}
+    @Override
+    public CompoundTag write(HatPart part, HolderLookup.Provider provider) {
+        return part.serializeNBT();
+    }
 }

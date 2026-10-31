@@ -1,4 +1,5 @@
 {
+	"render_type": "minecraft:translucent",
 	"parent": "hats:item/hatparent",
 	"texture_size": [32, 32],
 	"textures": {
@@ -78,7 +79,7 @@
 				"north": {"uv": [6.5, 5, 7.5, 5.5], "texture": "#0", "tintindex": 0},
 				"east": {"uv": [2.5, 7, 3, 7.5], "texture": "#0", "tintindex": 0},
 				"south": {"uv": [6.5, 5.5, 7.5, 6], "texture": "#0", "tintindex": 0},
-				"west": {"uv": [3, 7, 3.5, 7.5], "texture": "#0"},
+				"west": {"uv": [3, 7, 3.5, 7.5], "texture": "#0", "tintindex": 0},
 				"up": {"uv": [7, 7, 6, 6.5], "texture": "#0", "tintindex": 0},
 				"down": {"uv": [7.5, 6, 6.5, 6.5], "texture": "#0", "tintindex": 0}
 			}
@@ -91,7 +92,7 @@
 				"north": {"uv": [0.016, 0.016, 5.984, 3.234], "texture": "#0", "tintindex": 0},
 				"east": {"uv": [9.016, 5.016, 9.25, 7.984], "texture": "#0", "tintindex": 0},
 				"south": {"uv": [5.984, 0.016, 0.016, 3.234], "texture": "#0", "tintindex": 0},
-				"west": {"uv": [10.25, 6.25, 10.484, 9.25], "texture": "#0"},
+				"west": {"uv": [10.25, 6.25, 10.484, 9.25], "texture": "#0", "tintindex": 0},
 				"up": {"uv": [8.984, 9.25, 3.016, 9.016], "texture": "#0", "tintindex": 0},
 				"down": {"uv": [8.984, 8.516, 3.016, 8.75], "texture": "#0", "tintindex": 0}
 			}
@@ -169,7 +170,7 @@
 				"north": {"uv": [7.5, 5, 6.5, 5.5], "texture": "#0", "tintindex": 0},
 				"east": {"uv": [3.5, 7, 3, 7.5], "texture": "#0", "tintindex": 0},
 				"south": {"uv": [7.5, 5.5, 6.5, 6], "texture": "#0", "tintindex": 0},
-				"west": {"uv": [3, 7, 2.5, 7.5], "texture": "#0"},
+				"west": {"uv": [3, 7, 2.5, 7.5], "texture": "#0", "tintindex": 0},
 				"up": {"uv": [6, 7, 7, 6.5], "texture": "#0", "tintindex": 0},
 				"down": {"uv": [6.5, 6, 7.5, 6.5], "texture": "#0", "tintindex": 0}
 			}

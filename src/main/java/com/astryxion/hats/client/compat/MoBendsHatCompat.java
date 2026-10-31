@@ -13,11 +13,10 @@ import java.lang.reflect.Method;
  * rendering and only copies rotation (not full translation) onto vanilla {@code ModelPart}s for
  * bipeds. Hat layers that call {@code head.translateAndRotate} therefore misalign.
  * <p>
- * During rendering Mo' Bends stores the active mutator in {@code MoBendsRenderContext}; it remains
- * set while render layers run. We apply {@code BendsModelPart.applyCharacterTransformPoseStack} on
- * the same part Mo' Bends uses for the head (or wolf / spider head). Squid used a thread-local
- * mutator in older Mo' Bends; 1.21.x NeoForge Mo' Bends no longer exposes it on
- * {@code MoBendsRenderContext}, so squid is not handled here.
+ * During {@code RenderLivingEvent.Pre} Mo' Bends stores the active mutator in
+ * {@code MoBendsRenderContext}; it remains set while render layers run. We apply
+ * {@code BendsModelPart.applyCharacterTransformPoseStack} on the same part Mo' Bends uses for the head
+ * (or squid body, where cosmetic hats attach).
  */
 public final class MoBendsHatCompat {
 
@@ -30,6 +29,7 @@ public final class MoBendsHatCompat {
     private static Method getCurrentBipedMutator;
     private static Method getCurrentWolfMutator;
     private static Method getCurrentSpiderMutator;
+    private static Method getCurrentSquidMutator;
     private static Method shouldRenderCustom;
     private static Method getHead;
     private static Method applyCharacterTransformPoseStack;
@@ -44,7 +44,7 @@ public final class MoBendsHatCompat {
     }
 
     /**
-     * Tries Mo' Bends animated geometry for the entity currently being rendered (biped, wolf, spider).
+     * Tries Mo' Bends animated geometry for the entity currently being rendered (biped, wolf, spider, squid).
      *
      * @return true if a mutator applied a transform; false to use vanilla head path
      */
@@ -61,7 +61,10 @@ public final class MoBendsHatCompat {
         if (tryApplyWolfHead(poseStack)) {
             return true;
         }
-        return tryApplySpiderHead(poseStack);
+        if (tryApplySpiderHead(poseStack)) {
+            return true;
+        }
+        return tryApplySquidBody(poseStack);
     }
 
     static boolean tryApplyAnimatedBipedHead(PoseStack poseStack) {
@@ -128,6 +131,28 @@ public final class MoBendsHatCompat {
                 return false;
             }
             applyCharacterTransformPoseStack.invoke(head, poseStack);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static boolean tryApplySquidBody(PoseStack poseStack) {
+        try {
+            if (getCurrentSquidMutator == null) {
+                Class<?> ctx = Class.forName(RENDER_CONTEXT);
+                getCurrentSquidMutator = ctx.getMethod("getCurrentSquidMutator");
+            }
+            Object mutator = getCurrentSquidMutator.invoke(null);
+            if (mutator == null || !(boolean) shouldRenderCustom.invoke(mutator)) {
+                return false;
+            }
+            Field f = mutator.getClass().getField("squidBody");
+            Object body = f.get(mutator);
+            if (body == null) {
+                return false;
+            }
+            applyCharacterTransformPoseStack.invoke(body, poseStack);
             return true;
         } catch (Throwable ignored) {
             return false;

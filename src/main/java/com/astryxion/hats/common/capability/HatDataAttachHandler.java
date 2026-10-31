@@ -1,16 +1,13 @@
 package com.astryxion.hats.common.capability;
 
-import com.astryxion.hats.Hats;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 
 /**
- * Player hat data is provided via HatDataCapability.get(Player) (NeoForge storage).
- * No capability attachment; data is stored in SavedData and synced by packet.
+ * Used to attach a second {@code hat_data_v2} provider. That second copy is
+ * why trades never saved. Left in place so it must not attach another {@code HAT_DATA}.
  */
-public final class HatDataAttachHandler {
+public class HatDataAttachHandler {
 
-    public static final ResourceLocation HAT_DATA_ID =
-            ResourceLocation.fromNamespaceAndPath(Hats.MODID, "hat_data_v2");
-
-    private HatDataAttachHandler() {}
+    public static void attachCapabilities(Entity entity) {
+    }
 }

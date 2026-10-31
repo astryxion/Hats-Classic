@@ -1,4 +1,5 @@
 {
+	"render_type": "minecraft:translucent",
 	"parent": "hats:item/hatparent",
 	"texture_size": [32, 32],
 	"textures": {
@@ -10,12 +11,12 @@
 			"to": [15.28, 15.385, 15.28],
 			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.28, 8]},
 			"faces": {
-				"north": {"uv": [0, 0, 3, 3], "texture": "#0"},
-				"east": {"uv": [0, 3, 3, 6], "texture": "#0"},
-				"south": {"uv": [3, 0, 6, 3], "texture": "#0"},
-				"west": {"uv": [3, 3, 6, 6], "texture": "#0"},
-				"up": {"uv": [9, 6, 6, 3], "texture": "#0"},
-				"down": {"uv": [9, 0, 6, 3], "texture": "#0"}
+				"north": {"uv": [0, 0, 3, 3], "texture": "#0", "tintindex": 0},
+				"east": {"uv": [0, 3, 3, 6], "texture": "#0", "tintindex": 0},
+				"south": {"uv": [3, 0, 6, 3], "texture": "#0", "tintindex": 0},
+				"west": {"uv": [3, 3, 6, 6], "texture": "#0", "tintindex": 0},
+				"up": {"uv": [9, 6, 6, 3], "texture": "#0", "tintindex": 0},
+				"down": {"uv": [9, 0, 6, 3], "texture": "#0", "tintindex": 0}
 			}
 		}
 	],

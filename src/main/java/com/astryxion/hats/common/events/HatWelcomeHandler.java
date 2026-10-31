@@ -1,18 +1,31 @@
 package com.astryxion.hats.common.events;
 
+import com.astryxion.hats.Hats;
 import com.astryxion.hats.Config;
 import com.astryxion.hats.common.capability.HatDataCapability;
 import com.astryxion.hats.common.hat.HatMode;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.common.Mod;
 
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatWelcomeHandler {
 
-    public static void onPlayerJoin(ServerPlayer player) {
-        HatDataCapability.get(player).ifPresent(data -> {
-            if (!data.hasSeenWelcome()) {
+    @SubscribeEvent
+    public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (!Config.showWelcomeMessage) return;
 
+        var data = player.getData(HatDataCapability.HAT_DATA);
+        // Only show the message if the player hasn't seen it yet in this world
+        if (!data.hasSeenWelcome()) {
+
+                // 🔧 LOGIC UPDATE:
+                // Treat Creative players as "Cosmetic Mode" users regardless of config.
                 boolean showCosmeticMessage = player.isCreative() || Config.hatMode == HatMode.COSMETIC;
 
                 if (showCosmeticMessage) {
@@ -29,9 +42,8 @@ public class HatWelcomeHandler {
                             .append(" to see your unlocked hats."));
                 }
 
-                data.setSeenWelcome(true);
-                com.astryxion.hats.common.capability.HatDataCapability.markDirty(player);
-            }
-        });
+                // 🔧 Mark as seen so they never see it again in this world
+            data.setSeenWelcome(true);
+        }
     }
 }

@@ -1,56 +1,77 @@
 plugins {
     id 'java-library'
-    id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.140'
+    id 'eclipse'
     id 'idea'
-}
-
-tasks.named('wrapper', Wrapper).configure {
-    distributionType = Wrapper.DistributionType.BIN
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
 version = mod_version
 group = mod_group_id
 
-repositories {
-    // Optional Mo' Bends jar for IDE / compile checks (same idea as Forge 1.20.1 libs/)
-    flatDir {
-        dirs 'libs'
-    }
-}
-
 base {
-    archivesName = archive_base_name
+    archivesName = mod_id
 }
 
+// Mojang ships Java 21 to end users in 1.21.1.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 
 neoForge {
     version = project.neo_version
 
     runs {
+        configureEach {
+            gameDirectory = project.file('run')
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+
         client {
             client()
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
+
+        // Dual-client LAN testing. Existing runClient is unchanged.
+        // Inherit the full client launch, then override username + game directory
+        // so two instances can run at once.
+        clientPlayer1 {
+            client()
+            gameDirectory = project.file('run-player1')
+            programArgument '--username'
+            programArgument 'Player1'
+            programArgument '--uuid'
+            programArgument '11111111-1111-1111-1111-111111111111'
+        }
+
+        clientPlayer2 {
+            client()
+            gameDirectory = project.file('run-player2')
+            programArgument '--username'
+            programArgument 'Player2'
+            programArgument '--uuid'
+            programArgument '22222222-2222-2222-2222-222222222222'
+        }
+
         server {
             server()
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
+
         gameTestServer {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
+
         data {
-            data()
+            clientData()
+            gameDirectory = project.file('run-data')
             programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
-        configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-            logLevel = org.slf4j.event.Level.DEBUG
-        }
     }
+
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
@@ -58,61 +79,97 @@ neoForge {
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
-
-configurations {
-    runtimeClasspath.extendsFrom localRuntime
-}
-
-dependencies {
-    // Mo' Bends optional compat — hat code uses reflection only; jar is optional (rename built Mo' Bends jar to match).
-    if (file('libs/MoBends_1.21.1-4.0.4.jar').exists()) {
-        compileOnly name: 'MoBends_1.21.1-4.0.4'
+// Standard layout: everything under src/main/resources/ lands at jar root
+// (META-INF/neoforge.mods.toml, assets/, data/, mixins).
+sourceSets {
+    main {
+        java {
+            if (file('libs/entity_model_features-3.3.9-1.20.1-forge.jar').exists()) {
+                exclude 'traben/**'
+            }
+        }
+        resources {
+            srcDirs = ['src/main/resources', 'src/generated/resources']
+        }
     }
 }
 
-var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
-    var replaceProperties = [
-        minecraft_version         : minecraft_version,
-        minecraft_version_range   : minecraft_version_range,
-        neo_version               : neo_version,
-        loader_version_range      : loader_version_range,
-        mod_id                    : mod_id,
-        mod_name                  : mod_name,
-        mod_license               : mod_license,
-        mod_version               : mod_version,
-        mod_authors               : mod_authors,
-        mod_description           : mod_description,
-    ]
-    inputs.properties replaceProperties
-    expand replaceProperties
-    from "src/main/templates"
-    into "build/generated/sources/modMetadata"
+repositories {
+    flatDir {
+        dir 'libs'
+    }
 }
-sourceSets.main.resources.srcDir generateModMetadata
-neoForge.ideSyncTask generateModMetadata
+
+dependencies {
+    // Mo' Bends and Fresh Animations stay optional local jars, same as the 1.20.1 project.
+    // No new dependencies are added.
+    if (file('libs/MoBends_1.20.1-3.0.4.jar').exists()) {
+        compileOnly name: "MoBends_1.20.1-3.0.4"
+    }
+    if (file('libs/entity_model_features-3.3.9-1.20.1-forge.jar').exists()) {
+        compileOnly name: "entity_model_features-3.3.9-1.20.1-forge"
+    }
+    if (file('libs/entity_texture_features-7.2.4-1.20.1-forge.jar').exists()) {
+        compileOnly name: "entity_texture_features-7.2.4-1.20.1-forge"
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_credits            : mod_credits,
+            mod_description        : mod_description,
+    ]
+
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors,
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                'MixinConfigs'            : 'hats.mixins.json'
+        ])
+    }
+
+    // Compile stand-in for the optional EMF mixin target. Never ship it.
+    exclude 'traben/**'
+}
 
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
-            from components.java
+            artifact jar
         }
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/repo"
+            url "file://${project.projectDir}/mcmodsrepo"
         }
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-}
-
-jar {
-    from("LICENSE") {
-        rename { "${it}_${project.base.archivesName.get()}" }
-    }
+    options.compilerArgs.addAll(['-Xmaxerrs', '10000'])
 }
 
 idea {

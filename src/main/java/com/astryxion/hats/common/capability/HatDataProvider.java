@@ -1,26 +1,23 @@
 package com.astryxion.hats.common.capability;
 
-import com.astryxion.hats.common.hat.PlayerHatData;
 import com.astryxion.hats.common.hat.PlayerHatDataImpl;
+
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.neoforged.neoforge.attachment.IAttachmentHolder;
+import net.neoforged.neoforge.attachment.IAttachmentSerializer;
 
-/**
- * NeoForge: PlayerHatData is accessed via HatDataCapability.get(Player).
- * This class is kept for reference; serialization is in PlayerHatDataImpl.
- */
-public final class HatDataProvider {
+public class HatDataProvider implements IAttachmentSerializer<CompoundTag, PlayerHatDataImpl> {
 
-    public static PlayerHatData createNew() {
-        return new PlayerHatDataImpl();
+    @Override
+    public PlayerHatDataImpl read(IAttachmentHolder holder, CompoundTag tag, HolderLookup.Provider provider) {
+        PlayerHatDataImpl data = new PlayerHatDataImpl();
+        data.deserializeNBT(tag);
+        return data;
     }
 
-    public static CompoundTag serialize(PlayerHatData data) {
+    @Override
+    public CompoundTag write(PlayerHatDataImpl data, HolderLookup.Provider provider) {
         return data.serializeNBT();
     }
-
-    public static void deserialize(PlayerHatData data, CompoundTag tag) {
-        data.deserializeNBT(tag);
-    }
-
-    private HatDataProvider() {}
 }

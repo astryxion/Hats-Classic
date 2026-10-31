@@ -1,4 +1,5 @@
 {
+	"render_type": "minecraft:translucent",
 	"parent": "hats:item/hatparent",
 	"textures": {
 		"0": "hats:item/hats/villagernose"
@@ -9,12 +10,12 @@
 			"to": [10, 9, 8],
 			"rotation": {"angle": 0, "axis": "y", "origin": [15, 14, 15]},
 			"faces": {
-				"north": {"uv": [0, 0, 4, 6], "texture": "#0"},
-				"east": {"uv": [0, 6, 3, 12], "texture": "#0"},
-				"south": {"uv": [4, 4, 8, 10], "texture": "#0"},
-				"west": {"uv": [8, 8, 11, 14], "texture": "#0"},
-				"up": {"uv": [8, 3, 4, 0], "texture": "#0"},
-				"down": {"uv": [12, 0, 8, 3], "texture": "#0"}
+				"north": {"uv": [0, 0, 4, 6], "texture": "#0", "tintindex": 0},
+				"east": {"uv": [0, 6, 3, 12], "texture": "#0", "tintindex": 0},
+				"south": {"uv": [4, 4, 8, 10], "texture": "#0", "tintindex": 0},
+				"west": {"uv": [8, 8, 11, 14], "texture": "#0", "tintindex": 0},
+				"up": {"uv": [8, 3, 4, 0], "texture": "#0", "tintindex": 0},
+				"down": {"uv": [12, 0, 8, 3], "texture": "#0", "tintindex": 0}
 			}
 		}
 	],

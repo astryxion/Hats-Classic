@@ -1,223 +1,133 @@
 package com.astryxion.hats.common.network;
 
 import com.astryxion.hats.Hats;
+import com.astryxion.hats.common.hat.HatPart;
 import com.astryxion.hats.common.hat.HatPartCapability;
-import io.netty.buffer.Unpooled;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
+import com.astryxion.hats.common.network.trade.PacketCloseTradeBuilder;
+import com.astryxion.hats.common.network.trade.PacketIncomingTradeOffer;
+import com.astryxion.hats.common.network.trade.PacketNearbyPlayersList;
+import com.astryxion.hats.common.network.trade.PacketPeerInventory;
+import com.astryxion.hats.common.network.trade.PacketRequestNearbyPlayers;
+import com.astryxion.hats.common.network.trade.PacketRequestPeerInventory;
+import com.astryxion.hats.common.network.trade.PacketRespondTradeOffer;
+import com.astryxion.hats.common.network.trade.PacketSendTradeOffer;
+import com.astryxion.hats.common.network.trade.PacketTradeError;
+import com.astryxion.hats.common.network.trade.PacketTradeOfferRevoked;
+import com.astryxion.hats.common.network.trade.PacketTradePartnerLeft;
+import com.astryxion.hats.common.network.trade.PacketTradeResolved;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.bus.api.IEventBus;
-
-import java.util.function.Consumer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
+@EventBusSubscriber(modid = Hats.MODID)
 public class HatPacketHandler {
 
-    /** Set from client entry only; avoids loading client classes on dedicated server. */
-    private static Consumer<PacketHatUnlocked> hatUnlockedClientHandler = msg -> {};
+    private static final String CLIENT_HAT_HANDLERS = "com.astryxion.hats.client.network.HatClientPacketHandlers";
 
-    public static void bindHatUnlockedClientHandler(Consumer<PacketHatUnlocked> handler) {
-        hatUnlockedClientHandler = handler;
+    @SubscribeEvent
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar("2");
+
+        registrar.playToServer(PacketEquipHat.TYPE, PacketEquipHat.STREAM_CODEC, PacketEquipHat::handle);
+        registrar.playToServer(PacketOpenCosmeticMenu.TYPE, PacketOpenCosmeticMenu.STREAM_CODEC, PacketOpenCosmeticMenu::handle);
+        registrar.playToServer(PacketOpenHuntingMenu.TYPE, PacketOpenHuntingMenu.STREAM_CODEC, PacketOpenHuntingMenu::handle);
+        registrar.playToServer(PacketUpdateHatStand.TYPE, PacketUpdateHatStand.STREAM_CODEC, PacketUpdateHatStand::handle);
+        registrar.playToServer(PacketSetLauncherHat.TYPE, PacketSetLauncherHat.STREAM_CODEC, PacketSetLauncherHat::handle);
+
+        registrar.playToClient(PacketSyncHat.TYPE, PacketSyncHat.STREAM_CODEC, PacketSyncHat::handle);
+        registrar.playToClient(PacketHatUnlocked.TYPE, PacketHatUnlocked.STREAM_CODEC, HatPacketHandler::handleHatUnlocked);
+        registrar.playToClient(PacketSyncHatPart.TYPE, PacketSyncHatPart.STREAM_CODEC, PacketSyncHatPart::handle);
+        registrar.playToClient(PacketOpenHatStand.TYPE, PacketOpenHatStand.STREAM_CODEC, PacketOpenHatStand::handle);
+
+        registerTradePackets(registrar);
     }
 
-    public static final ResourceLocation CHANNEL_ID =
-            ResourceLocation.fromNamespaceAndPath(Hats.MODID, "main");
-    private static final ResourceLocation CHANNEL_ID_C2S = ResourceLocation.fromNamespaceAndPath(Hats.MODID, "main_c2s");
-    private static final ResourceLocation CHANNEL_ID_S2C = ResourceLocation.fromNamespaceAndPath(Hats.MODID, "main_s2c");
+    private static void registerTradePackets(PayloadRegistrar registrar) {
+        registrar.playToServer(PacketRequestNearbyPlayers.TYPE, PacketRequestNearbyPlayers.STREAM_CODEC, PacketRequestNearbyPlayers::handle);
+        registrar.playToServer(PacketRequestPeerInventory.TYPE, PacketRequestPeerInventory.STREAM_CODEC, PacketRequestPeerInventory::handle);
+        registrar.playToServer(PacketSendTradeOffer.TYPE, PacketSendTradeOffer.STREAM_CODEC, PacketSendTradeOffer::handle);
+        registrar.playToServer(PacketRespondTradeOffer.TYPE, PacketRespondTradeOffer.STREAM_CODEC, PacketRespondTradeOffer::handle);
+        registrar.playToServer(PacketCloseTradeBuilder.TYPE, PacketCloseTradeBuilder.STREAM_CODEC, PacketCloseTradeBuilder::handle);
 
-    private static final byte ID_EQUIP = 0;
-    private static final byte ID_OPEN_COSMETIC = 1;
-    private static final byte ID_OPEN_HUNTING = 2;
-    private static final byte ID_SYNC_HAT = 3;
-    private static final byte ID_HAT_UNLOCKED = 4;
-    private static final byte ID_SYNC_HAT_PART = 5;
-
-    public record HatsC2SPayload(byte typeId, byte[] payload) implements CustomPacketPayload {
-        public static final CustomPacketPayload.Type<HatsC2SPayload> TYPE = new CustomPacketPayload.Type<>(CHANNEL_ID_C2S);
-        public static final StreamCodec<FriendlyByteBuf, HatsC2SPayload> CODEC = StreamCodec.composite(
-                ByteBufCodecs.BYTE, HatsC2SPayload::typeId,
-                ByteBufCodecs.byteArray(32767), HatsC2SPayload::payload,
-                HatsC2SPayload::new);
-        @Override
-        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+        registrar.playToClient(PacketNearbyPlayersList.TYPE, PacketNearbyPlayersList.STREAM_CODEC, PacketNearbyPlayersList::handle);
+        registrar.playToClient(PacketPeerInventory.TYPE, PacketPeerInventory.STREAM_CODEC, PacketPeerInventory::handle);
+        registrar.playToClient(PacketIncomingTradeOffer.TYPE, PacketIncomingTradeOffer.STREAM_CODEC, PacketIncomingTradeOffer::handle);
+        registrar.playToClient(PacketTradeResolved.TYPE, PacketTradeResolved.STREAM_CODEC, PacketTradeResolved::handle);
+        registrar.playToClient(PacketTradeOfferRevoked.TYPE, PacketTradeOfferRevoked.STREAM_CODEC, PacketTradeOfferRevoked::handle);
+        registrar.playToClient(PacketTradePartnerLeft.TYPE, PacketTradePartnerLeft.STREAM_CODEC, PacketTradePartnerLeft::handle);
+        registrar.playToClient(PacketTradeError.TYPE, PacketTradeError.STREAM_CODEC, PacketTradeError::handle);
+        registrar.playToClient(PacketSetUnlockedHats.TYPE, PacketSetUnlockedHats.STREAM_CODEC, PacketSetUnlockedHats::handle);
+        registrar.playToClient(PacketRehatify.TYPE, PacketRehatify.STREAM_CODEC, PacketRehatify::handle);
     }
 
-    public record HatsS2CPayload(byte typeId, byte[] payload) implements CustomPacketPayload {
-        public static final CustomPacketPayload.Type<HatsS2CPayload> TYPE = new CustomPacketPayload.Type<>(CHANNEL_ID_S2C);
-        public static final StreamCodec<FriendlyByteBuf, HatsS2CPayload> CODEC = StreamCodec.composite(
-                ByteBufCodecs.BYTE, HatsS2CPayload::typeId,
-                ByteBufCodecs.byteArray(32767), HatsS2CPayload::payload,
-                HatsS2CPayload::new);
-        @Override
-        public Type<? extends CustomPacketPayload> type() { return TYPE; }
-    }
-
-    public static void register(IEventBus modEventBus) {
-        modEventBus.addListener(RegisterPayloadHandlersEvent.class, HatPacketHandler::onRegisterPayloads);
-    }
-
-    private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Hats.MODID).versioned("1");
-
-        registrar.playToServer(HatsC2SPayload.TYPE, HatsC2SPayload.CODEC, (payload, context) -> {
-            context.enqueueWork(() -> {
-                if (!(context.player() instanceof ServerPlayer serverPlayer)) return;
-                FriendlyByteBuf copy = new FriendlyByteBuf(Unpooled.wrappedBuffer(payload.payload()));
-                try {
-                    switch (payload.typeId()) {
-                        case ID_EQUIP -> {
-                            PacketEquipHat msg = PacketEquipHat.decode(copy);
-                            PacketEquipHat.handle(msg, serverPlayer);
-                        }
-                        case ID_OPEN_COSMETIC -> {
-                            PacketOpenCosmeticMenu msg = new PacketOpenCosmeticMenu();
-                            PacketOpenCosmeticMenu.handle(msg, serverPlayer);
-                        }
-                        case ID_OPEN_HUNTING -> {
-                            PacketOpenHuntingMenu msg = new PacketOpenHuntingMenu();
-                            PacketOpenHuntingMenu.handle(msg, serverPlayer);
-                        }
-                        default -> {}
-                    }
-                } finally {
-                    copy.release();
-                }
-            });
-        });
-
-        registrar.playToClient(HatsS2CPayload.TYPE, HatsS2CPayload.CODEC, (payload, context) -> {
-            context.enqueueWork(() -> {
-                FriendlyByteBuf copy = new FriendlyByteBuf(Unpooled.wrappedBuffer(payload.payload()));
-                try {
-                    switch (payload.typeId()) {
-                        case ID_SYNC_HAT -> {
-                            PacketSyncHat msg = PacketSyncHat.decode(copy);
-                            PacketSyncHat.handle(msg);
-                        }
-                        case ID_HAT_UNLOCKED -> {
-                            var level = context.player().level();
-                            if (level == null) return;
-                            var registryAccess = level.registryAccess();
-                            PacketHatUnlocked msg = PacketHatUnlocked.decode(copy, registryAccess);
-                            hatUnlockedClientHandler.accept(msg);
-                        }
-                        case ID_SYNC_HAT_PART -> {
-                            PacketSyncHatPart msg = PacketSyncHatPart.decode(copy);
-                            PacketSyncHatPart.handle(msg);
-                        }
-                        default -> {}
-                    }
-                } finally {
-                    copy.release();
-                }
-            });
-        });
-    }
-
-    public static void sendToPlayer(ServerPlayer player, byte packetId, FriendlyByteBuf buf) {
-        byte[] arr = new byte[buf.readableBytes()];
-        buf.getBytes(buf.readerIndex(), arr);
-        sendToPlayer(player, packetId, arr);
-    }
-
-    public static void sendToPlayer(ServerPlayer player, byte packetId, byte[] payload) {
-        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player, new HatsS2CPayload(packetId, payload));
-    }
-
-    public static void sendEquipToServer(String hatId) {
-        FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
-        out.writeByte(ID_EQUIP);
-        PacketEquipHat.encode(new PacketEquipHat(hatId), out);
-        byte[] arr = new byte[out.readableBytes()];
-        out.getBytes(out.readerIndex(), arr);
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new HatsC2SPayload(ID_EQUIP, arr));
-    }
-
-    public static void sendOpenCosmeticToServer() {
-        FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
-        out.writeByte(ID_OPEN_COSMETIC);
-        byte[] arr = new byte[out.readableBytes()];
-        out.getBytes(out.readerIndex(), arr);
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new HatsC2SPayload(ID_OPEN_COSMETIC, arr));
-    }
-
-    public static void sendOpenHuntingToServer() {
-        FriendlyByteBuf out = new FriendlyByteBuf(Unpooled.buffer());
-        out.writeByte(ID_OPEN_HUNTING);
-        byte[] arr = new byte[out.readableBytes()];
-        out.getBytes(out.readerIndex(), arr);
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new HatsC2SPayload(ID_OPEN_HUNTING, arr));
-    }
-
-    public static void sendSyncHatToPlayer(ServerPlayer player, net.minecraft.nbt.CompoundTag data) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        PacketSyncHat.encode(new PacketSyncHat(data), buf);
-        sendToPlayer(player, ID_SYNC_HAT, buf);
-    }
-
-    public static void sendHatUnlockedToPlayer(ServerPlayer player, net.minecraft.world.item.ItemStack hatStack) {
-        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), player.registryAccess());
-        PacketHatUnlocked.encode(new PacketHatUnlocked(hatStack), buf, player.registryAccess());
-        byte[] arr = new byte[buf.readableBytes()];
-        buf.getBytes(buf.readerIndex(), arr);
-        buf.release();
-        sendToPlayer(player, ID_HAT_UNLOCKED, arr);
-    }
-
-    public static void sendSyncHatPartToPlayer(ServerPlayer player, int entityId, CompoundTag tag) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        try {
-            PacketSyncHatPart.encode(new PacketSyncHatPart(entityId, tag), buf);
-            sendToPlayer(player, ID_SYNC_HAT_PART, buf);
-        } finally {
-            buf.release();
-        }
+    private static void handleHatUnlocked(PacketHatUnlocked msg, net.neoforged.neoforge.network.handling.IPayloadContext ctx) {
+        ctx.enqueueWork(() -> callClient(CLIENT_HAT_HANDLERS, "handleHatUnlocked",
+                new Class<?>[]{PacketHatUnlocked.class}, new Object[]{msg}));
     }
 
     /**
-     * Syncs this player's equipped hat (render state) to every client that can see them, including their own.
-     * Required for multiplayer so other players see the correct hat model.
+     * Loads a client class by name only when this process is a physical client.
+     * A direct reference would put {@code LocalPlayer} on the dedicated-server classpath.
      */
+    public static void callClient(String className, String method, Class<?>[] types, Object[] args) {
+        if (FMLEnvironment.dist != Dist.CLIENT) {
+            return;
+        }
+        try {
+            Class.forName(className).getMethod(method, types).invoke(null, args);
+        } catch (Throwable t) {
+            Hats.LOGGER.error("Failed to handle client packet {}.{}", className, method, t);
+        }
+    }
+
+    public static void sendToPlayer(ServerPlayer player, CustomPacketPayload msg) {
+        PacketDistributor.sendToPlayer(player, msg);
+    }
+
+    public static void sendToTrackingAndSelf(LivingEntity entity, CustomPacketPayload msg) {
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(entity, msg);
+    }
+
+    /**
+     * Client to server. PacketDistributor.sendToServer is client-side, so this
+     * returns immediately on a dedicated server.
+     */
+    public static void sendToServer(CustomPacketPayload msg) {
+        if (FMLEnvironment.dist != Dist.CLIENT || msg == null) {
+            return;
+        }
+        PacketDistributor.sendToServer(msg);
+    }
+
+    public static void syncHatPartToTracking(LivingEntity entity) {
+        if (entity == null || entity.level().isClientSide()) {
+            return;
+        }
+        HatPart part = entity.getData(HatPartCapability.HAT_PART);
+        sendToTrackingAndSelf(entity, new PacketSyncHatPart(entity.getId(), part.serializeNBT()));
+    }
+
     public static void syncPlayerHatPartToTracking(ServerPlayer player) {
-        if (player == null || player.level().isClientSide()) {
-            return;
-        }
-        var part = HatPartCapability.getOrCreate(player);
-        if (part == null) {
-            return;
-        }
-        CompoundTag tag = part.serializeNBT(player.registryAccess());
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        try {
-            PacketSyncHatPart.encode(new PacketSyncHatPart(player.getId(), tag), buf);
-            byte[] arr = new byte[buf.readableBytes()];
-            buf.getBytes(buf.readerIndex(), arr);
-            net.neoforged.neoforge.network.PacketDistributor.sendToPlayersTrackingEntityAndSelf(
-                    player, new HatsS2CPayload(ID_SYNC_HAT_PART, arr));
-        } finally {
-            buf.release();
-        }
+        syncHatPartToTracking(player);
     }
 
-    /**
-     * Sends one player's hat render state to a single observer (e.g. when they start tracking that player).
-     */
-    public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {
+    public static void sendHatPartTo(ServerPlayer observer, LivingEntity hatOwner) {
         if (observer == null || hatOwner == null || observer.level().isClientSide()) {
             return;
         }
-        var part = HatPartCapability.getOrCreate(hatOwner);
-        if (part == null) {
-            return;
-        }
-        CompoundTag tag = part.serializeNBT(observer.registryAccess());
-        sendSyncHatPartToPlayer(observer, hatOwner.getId(), tag);
+        HatPart part = hatOwner.getData(HatPartCapability.HAT_PART);
+        sendToPlayer(observer, new PacketSyncHatPart(hatOwner.getId(), part.serializeNBT()));
+    }
+
+    public static void sendPlayerHatPartTo(ServerPlayer observer, Player hatOwner) {
+        sendHatPartTo(observer, hatOwner);
     }
 }
