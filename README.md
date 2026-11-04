@@ -6,7 +6,9 @@ Hats (Classic) brings the classic Hats mod experience to modern Minecraft, combi
 
 **Author:** Astryxion
 
-**Credits:** Antikythera Studios, Contributors, fonnymunkey, iChun
+**Credits:** Contributors, fonnymunkey, iChun
+
+**Modern GUI and trading:** Antikythera Studios
 
 ## License
 

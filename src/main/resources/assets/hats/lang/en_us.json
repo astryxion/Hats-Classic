@@ -577,7 +577,7 @@
   "hats.config.guiStyle.legacy": "Legacy",
   "hats.config.guiStyle.modern": "Modern",
   "hats.config.showRarityColorsEverywhere": "Legacy Rarity Colors Everywhere",
-  "hats.config.showRarityColorsEverywhere.tooltip": "Color Legacy All Hats and Favorites names by rarity. Modern and rarity categories are always colored.",
+  "hats.config.showRarityColorsEverywhere.tooltip": "Color hat names by rarity in the Legacy GUI. The Modern GUI is always colored.",
   "hats.gui.title": "Hats",
   "hats.gui.search": "Search",
   "hats.gui.equip": "Equip",

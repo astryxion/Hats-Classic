@@ -44,9 +44,7 @@ public class HatLauncherItem extends Item {
         ItemStack stack = player.getItemInHand(hand);
         if (level.isClientSide()) {
             if (player.isShiftKeyDown() || shouldOpenSelect(player, stack)) {
-                if (FMLEnvironment.getDist() == Dist.CLIENT) {
-                    com.astryxion.hats.client.gui.HatLaunchSelectScreen.open(hand);
-                }
+                openSelectScreen(hand);
             }
             return InteractionResult.SUCCESS;
         }
@@ -86,6 +84,19 @@ public class HatLauncherItem extends Item {
     @Override
     public int getUseDuration(ItemStack stack, LivingEntity entity) {
         return 72000;
+    }
+
+    private static void openSelectScreen(InteractionHand hand) {
+        if (FMLEnvironment.getDist() != Dist.CLIENT) {
+            return;
+        }
+        try {
+            Class.forName("com.astryxion.hats.client.gui.HatLaunchSelectScreen")
+                    .getMethod("open", InteractionHand.class)
+                    .invoke(null, hand);
+        } catch (Throwable t) {
+            com.astryxion.hats.Hats.LOGGER.error("Failed to open hat launcher screen", t);
+        }
     }
 
     private static boolean shouldOpenSelect(Player player, ItemStack stack) {

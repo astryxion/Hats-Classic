@@ -56,8 +56,7 @@ public class HatItem extends Item {
     @Override
     public Component getName(ItemStack stack) {
         Component named = tabulaDisplayName();
-        Component base = named != null ? named : super.getName(stack);
-        return base.copy().withStyle(style -> style.withColor(getHatRarity().getColor()));
+        return named != null ? named : super.getName(stack);
     }
 
     @Nullable

@@ -5,7 +5,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
-import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public class PacketSyncHat implements CustomPacketPayload {
@@ -36,14 +35,9 @@ public class PacketSyncHat implements CustomPacketPayload {
     }
 
     public static void handle(PacketSyncHat msg, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            if (net.neoforged.fml.loading.FMLEnvironment.getDist() != Dist.CLIENT) {
-                return;
-            }
-            var player = net.minecraft.client.Minecraft.getInstance().player;
-            if (player != null && msg.data != null) {
-                com.astryxion.hats.common.capability.HatDataAccess.apply(player, msg.data);
-            }
-        });
+        ctx.enqueueWork(() -> ClientPacketCalls.handlers(
+                "handleSyncHat",
+                new Class<?>[] {CompoundTag.class},
+                msg.data));
     }
 }

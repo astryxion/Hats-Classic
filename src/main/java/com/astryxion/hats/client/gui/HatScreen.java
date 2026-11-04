@@ -189,8 +189,7 @@ public class HatScreen extends Screen {
             Item item = visibleHats.get(start + slot);
             ItemStack display = new ItemStack(item);
             Component name = display.getHoverName();
-            if (item instanceof HatItem hatItem
-                    && (view == View.CATEGORY || Config.showRarityColorsEverywhere)) {
+            if (item instanceof HatItem hatItem && Config.showRarityColorsEverywhere) {
                 int color = hatItem.getHatRarity().getColor();
                 name = name.copy().withStyle(style -> style.withColor(color));
             }
@@ -209,10 +208,13 @@ public class HatScreen extends Screen {
                 Component.translatable("hats.gui.allHats"), button -> showAllHats()));
         for (int i = 0; i < categories.size(); i++) {
             HatRarity rarity = categories.get(i);
+            Component label = Component.literal(titleCase(rarity.name()));
+            if (Config.showRarityColorsEverywhere) {
+                label = label.copy().withStyle(style -> style.withColor(rarity.getColor()));
+            }
             addRenderableWidget(HatsButton.create(
                     guiLeft + 82, guiTop + 29 + i * 22, 88, 20,
-                    Component.literal(titleCase(rarity.name()))
-                            .withStyle(style -> style.withColor(rarity.getColor())),
+                    label,
                     button -> showCategory(rarity)));
         }
     }
@@ -785,7 +787,7 @@ public class HatScreen extends Screen {
 
         @Override
         protected void renderLabel(GuiGraphicsExtractor graphics) {
-            int color = blocked ? 0xA0A0A0 : accessory.rarity.getColor();
+            int color = blocked ? 0xA0A0A0 : Config.showRarityColorsEverywhere ? accessory.rarity.getColor() : 0xFFFFFF;
             renderScrollingString(
                     graphics,
                     Minecraft.getInstance().font,

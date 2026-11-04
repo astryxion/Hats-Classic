@@ -4,7 +4,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
-import net.neoforged.api.distmarker.Dist;
+import com.astryxion.hats.common.network.ClientPacketCalls;
+
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import org.jetbrains.annotations.Nullable;
@@ -117,11 +118,6 @@ public class PacketTradeResolved implements CustomPacketPayload {
     }
 
     public static void handle(PacketTradeResolved msg, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            if (net.neoforged.fml.loading.FMLEnvironment.getDist() != Dist.CLIENT) {
-                return;
-            }
-            com.astryxion.hats.client.trade.ClientTradePackets.onResolved(msg);
-        });
+        ctx.enqueueWork(() -> ClientPacketCalls.trade("onResolved", PacketTradeResolved.class, msg));
     }
 }

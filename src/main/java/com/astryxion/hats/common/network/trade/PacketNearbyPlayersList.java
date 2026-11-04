@@ -4,8 +4,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.fml.loading.FMLEnvironment;
+import com.astryxion.hats.common.network.ClientPacketCalls;
+
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
@@ -55,10 +55,6 @@ public class PacketNearbyPlayersList implements CustomPacketPayload {
     }
 
     public static void handle(PacketNearbyPlayersList msg, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            if (FMLEnvironment.getDist() == Dist.CLIENT) {
-                com.astryxion.hats.client.trade.ClientTradePackets.onNearbyPlayers(msg);
-            }
-        });
+        ctx.enqueueWork(() -> ClientPacketCalls.trade("onNearbyPlayers", PacketNearbyPlayersList.class, msg));
     }
 }

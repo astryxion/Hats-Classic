@@ -146,7 +146,7 @@ public class Config {
             .defineEnum("guiStyle", GuiStyle.LEGACY);
 
     public static final ModConfigSpec.BooleanValue SHOW_RARITY_COLORS_EVERYWHERE = BUILDER
-            .comment("Color Legacy GUI hat names by rarity outside the rarity categories")
+            .comment("Color hat names by rarity in the Legacy GUI. The Modern GUI is always colored.")
             .define("showRarityColorsEverywhere", false);
 
     public static final ModConfigSpec.EnumValue<HatStandGuiStyle> HAT_STAND_GUI_STYLE = BUILDER

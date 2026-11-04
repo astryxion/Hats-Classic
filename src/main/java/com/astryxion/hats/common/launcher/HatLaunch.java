@@ -3,6 +3,7 @@ package com.astryxion.hats.common.launcher;
 import net.minecraft.core.registries.BuiltInRegistries;
 
 import com.astryxion.hats.Config;
+import com.astryxion.hats.Hats;
 import com.astryxion.hats.common.data.ServerHatUnlocks;
 import com.astryxion.hats.common.hat.HatManager;
 import com.astryxion.hats.common.hat.HatMode;
@@ -21,9 +22,13 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
+
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public final class HatLaunch {
@@ -136,24 +141,35 @@ public final class HatLaunch {
         if (!useInventory(player)) {
             return id == null || TradeHats.isHat(id);
         }
-        if (id == null) {
-            Identifier wearing = TradeHats.equippedId(player);
-            for (Identifier owned : com.astryxion.hats.client.hat.ClientHatUnlocks.all()) {
-                int available = com.astryxion.hats.client.hat.ClientHatUnlocks.count(owned);
-                if (owned.equals(wearing)) {
-                    available--;
-                }
-                if (available > 0) {
-                    return true;
-                }
-            }
+        if (FMLEnvironment.getDist() != Dist.CLIENT) {
             return false;
         }
-        int owned = com.astryxion.hats.client.hat.ClientHatUnlocks.count(id);
-        if (id.equals(TradeHats.equippedId(player))) {
-            owned--;
+        try {
+            Class<?> unlocks = Class.forName("com.astryxion.hats.client.hat.ClientHatUnlocks");
+            if (id == null) {
+                Identifier wearing = TradeHats.equippedId(player);
+                @SuppressWarnings("unchecked")
+                Collection<Identifier> owned = (Collection<Identifier>) unlocks.getMethod("all").invoke(null);
+                for (Identifier ownedId : owned) {
+                    int available = (int) unlocks.getMethod("count", Identifier.class).invoke(null, ownedId);
+                    if (ownedId.equals(wearing)) {
+                        available--;
+                    }
+                    if (available > 0) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            int owned = (int) unlocks.getMethod("count", Identifier.class).invoke(null, id);
+            if (id.equals(TradeHats.equippedId(player))) {
+                owned--;
+            }
+            return owned > 0;
+        } catch (Throwable t) {
+            Hats.LOGGER.error("Failed to read client hat unlocks for the launcher", t);
+            return false;
         }
-        return owned > 0;
     }
 
     public static boolean clientLooksAtHatted(Player player) {

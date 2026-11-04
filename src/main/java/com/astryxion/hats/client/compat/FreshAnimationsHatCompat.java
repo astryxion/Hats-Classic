@@ -25,9 +25,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Fresh Animations empties vanilla {@code head} and draws the skull on CEM
- * {@code head2} (under {@code body} / {@code hat}). EMF writes those poses
- * during model render. Snapshot that matrix, then copy it onto the hat layer.
+ * Fresh Animations empties vanilla {@code head} on mobs and draws the skull on
+ * CEM {@code head2}. The player extension instead replaces {@code head} with a
+ * custom skull and animates {@code root} (lean, squash, jump) plus {@code head}.
+ * EMF poses those parts for feature layers before the hat submits. Copy that
+ * chain, root included, onto the hat.
  */
 public final class FreshAnimationsHatCompat {
 
@@ -44,6 +46,7 @@ public final class FreshAnimationsHatCompat {
     private static Field childrenField;
     private static Field cubesField;
     private static Class<?> emfCustomClass;
+    private static Class<?> emfVanillaClass;
     private static Field emfCustomIdField;
     private static boolean emfMethodsResolved;
 
@@ -110,12 +113,16 @@ public final class FreshAnimationsHatCompat {
 
         Object emfRoot = emfRoot(model);
         if (emfRoot instanceof ModelPart rootPart) {
-            animateEmf(emfRoot);
+            // Feature layers run after EMF's post-setupAnim animate(). Calling
+            // animate() again reapplies additive channels such as root.ty.
+            if (!emfPosingForLayers()) {
+                animateEmf(emfRoot);
+            }
             ModelPart mapped = mappedVisualHead(emfRoot);
             if (mapped != null) {
-                List<ModelPart> chain = chainFromVanillaParts(emfRoot, mapped);
+                List<ModelPart> chain = chainTo(model, rootPart, mapped);
                 if (chain.isEmpty()) {
-                    chain = chainTo(model, rootPart, mapped);
+                    chain = chainFromVanillaParts(emfRoot, mapped);
                 }
                 if (!chain.isEmpty()) {
                     for (ModelPart bone : chain) {
@@ -177,12 +184,20 @@ public final class FreshAnimationsHatCompat {
             return 0;
         }
         if (name.equals("head2") || name.equals("head_2")) {
-            return 3;
+            return 4;
         }
         if (name.equals("head1_s") || name.equals("head1")) {
-            return 3;
+            return 4;
         }
         if (name.equals("nose") && isSkullSized(part)) {
+            return 4;
+        }
+        // Player extension: the skull is a custom part named head, parented
+        // under the vanilla head, which is parented under the animated root.
+        if (isEmfCustom(part) && name.equals("head") && isSkullSized(part)) {
+            return 3;
+        }
+        if (!isEmfCustom(part) && isEmfPart(part) && name.equals("head") && isSkullSized(part)) {
             return 3;
         }
         if (isEmfCustom(part) && (name.equals("headwear") || name.equals("hat")) && isSkullSized(part)) {
@@ -238,6 +253,11 @@ public final class FreshAnimationsHatCompat {
     private static boolean isEmfCustom(ModelPart part) {
         resolveEmfMethods();
         return emfCustomClass != null && emfCustomClass.isInstance(part);
+    }
+
+    private static boolean isEmfPart(ModelPart part) {
+        resolveEmfMethods();
+        return emfVanillaClass != null && emfVanillaClass.isInstance(part);
     }
 
     private static String emfCustomId(ModelPart part) {
@@ -387,7 +407,7 @@ public final class FreshAnimationsHatCompat {
             return;
         }
         if (priority > bestPriority[0]
-                || (priority == bestPriority[0] && !best.isEmpty() && chain.size() < best.size())) {
+                || (priority == bestPriority[0] && chain.size() > best.size())) {
             bestPriority[0] = priority;
             best.clear();
             best.addAll(chain);
@@ -403,9 +423,6 @@ public final class FreshAnimationsHatCompat {
         }
         List<ModelPart> fromRoot = new ArrayList<>();
         if (buildChain(emfRoot, target, fromRoot, new IdentityHashMap<>())) {
-            if (!fromRoot.isEmpty() && fromRoot.get(0) == emfRoot && fromRoot.size() > 1) {
-                fromRoot.remove(0);
-            }
             return fromRoot;
         }
         return List.of();
@@ -604,6 +621,20 @@ public final class FreshAnimationsHatCompat {
         }
     }
 
+    /**
+     * True while EMF is submitting feature layers. The player pose was already
+     * written for those layers; animating again doubles root motion.
+     */
+    private static boolean emfPosingForLayers() {
+        try {
+            Class<?> state = Class.forName("traben.entity_model_features.models.animation.state.EMFState");
+            Field layerPhase = state.getField("isLayerPhase");
+            return layerPhase.getBoolean(null);
+        } catch (ReflectiveOperationException ignored) {
+            return false;
+        }
+    }
+
     private static void animateEmf(Object root) {
         resolveEmfMethods();
         if (emfAnimateMethod == null) {
@@ -684,6 +715,10 @@ public final class FreshAnimationsHatCompat {
         try {
             emfCustomClass = Class.forName("traben.entity_model_features.models.parts.EMFModelPartCustom");
             emfCustomIdField = emfCustomClass.getField("id");
+        } catch (ReflectiveOperationException ignored) {
+        }
+        try {
+            emfVanillaClass = Class.forName("traben.entity_model_features.models.parts.EMFModelPartVanilla");
         } catch (ReflectiveOperationException ignored) {
         }
         try {
